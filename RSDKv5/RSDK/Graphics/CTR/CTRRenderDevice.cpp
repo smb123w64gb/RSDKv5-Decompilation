@@ -1,11 +1,13 @@
 bool RenderDevice::Init()
 {
-  gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, true);
+  gfxInitDefault();
   consoleInit(GFX_BOTTOM, NULL);
 
   // dummy out later maybe possibly
   printf("RSDKv5 3DS: RenderDevice init\n \
           The programmer has a nap. Hold out! Programmer!\n");
+
+  gfxSetScreenFormat(GFX_TOP, GSP_RGB565_OES);
 
   return true;
 }

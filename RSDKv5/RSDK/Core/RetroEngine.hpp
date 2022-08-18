@@ -234,7 +234,7 @@ enum GameRegions {
 
 // enables the use of the mod loader
 #ifndef RETRO_USE_MOD_LOADER
-#define RETRO_USE_MOD_LOADER (!RETRO_USE_ORIGINAL_CODE && 1)
+//#define RETRO_USE_MOD_LOADER (!RETRO_USE_ORIGINAL_CODE && 1)
 #endif
 
 // defines the version of the mod loader, this should be changed ONLY if the ModFunctionTable is updated in any way
@@ -393,6 +393,7 @@ enum GameRegions {
 #undef RETRO_INPUTDEVICE_SDL2
 
 #undef RETRO_INPUTDEVICE_KEYBOARD 
+#undef RETRO_USE_MOD_LOADER
 
 #if defined RSDK_USE_CTR
 #undef RETRO_RENDERDEVICE_CTR
@@ -406,10 +407,6 @@ enum GameRegions {
 #else
 #error RSDK_USE_CTR must be defined.
 #endif
-
-// TODO: add mod loader back in later
-#undef RETRO_USE_MOD_LOADER 
-#define RETRO_USE_MOD_LOADER (0)
 #endif
 
 #if RETRO_PLATFORM == RETRO_WIN || RETRO_PLATFORM == RETRO_UWP
