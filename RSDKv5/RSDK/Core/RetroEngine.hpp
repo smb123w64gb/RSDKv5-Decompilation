@@ -453,9 +453,6 @@ enum GameRegions {
 #endif // ! USING_VCPKG
 #endif // ! RETRO_RENDERDEVICE_SDL2
 
-#if RETRO_PLATFORM == RETRO_3DS
-#include <3ds.h>
-#endif
 
 #include <theora/theoradec.h>
 
@@ -508,6 +505,11 @@ enum GameRegions {
 #include <theora/theoradec.h>
 
 #undef RETRO_USING_MOUSE
+#elif RETRO_PLATFORM == RETRO_3DS
+#define PrintConsole _PrintConsole
+#include <3ds.h>
+#undef PrintConsole
+
 #endif
 
 // ============================

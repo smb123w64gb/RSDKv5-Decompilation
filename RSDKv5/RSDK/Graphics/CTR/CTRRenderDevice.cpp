@@ -1,6 +1,3 @@
-// compiler throws an error unless this is included?
-#include <3ds.h>
-
 bool RenderDevice::Init()
 {
   gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, true);
