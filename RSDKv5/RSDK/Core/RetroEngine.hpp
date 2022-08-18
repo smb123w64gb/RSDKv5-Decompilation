@@ -166,6 +166,7 @@ enum GameRegions {
 #define RETRO_RENDERDEVICE_SDL2 (0)
 #define RETRO_RENDERDEVICE_GLFW (0)
 #define RETRO_RENDERDEVICE_EGL  (0)
+#define RETRO_RENDERDEVICE_CTR  (0)
 
 // ============================
 // AUDIO DEVICE BACKENDS
@@ -175,6 +176,7 @@ enum GameRegions {
 // CUSTOM
 #define RETRO_AUDIODEVICE_SDL2 (0)
 #define RETRO_AUDIODEVICE_OBOE (0)
+#define RETRO_AUDIODEVICE_CTR  (0)
 
 // ============================
 // INPUT DEVICE BACKENDS
@@ -185,9 +187,10 @@ enum GameRegions {
 #define RETRO_INPUTDEVICE_STEAM    (0)
 #define RETRO_INPUTDEVICE_NX       (0)
 // CUSTOM
-#define RETRO_INPUTDEVICE_SDL2   (0)
+#define RETRO_INPUTDEVICE_SDL2   (1)
 #define RETRO_INPUTDEVICE_GLFW   (0)
 #define RETRO_INPUTDEVICE_PDBOAT (0)
+#define RETRO_INPUTDEVICE_CTR    (0)
 
 // ============================
 // USER CORE BACKENDS
@@ -274,8 +277,21 @@ enum GameRegions {
 
 #undef RETRO_INPUTDEVICE_GLFW
 #define RETRO_INPUTDEVICE_GLFW (1)
+#elif defined(RSDK_USE_CTR)
+#undef RETRO_RENDERDEVICE_CTR
+#define RETRO_RENDERDEVICE_CTR (1)
+
+#undef RETRO_AUDIODEVICE_CTR
+#define RETRO_AUDIODEVICE_CTR (1)
+
+#undef RETRO_INPUTDEVICE_CTR 
+#define RETRO_INPUTDEVICE_CTR (1)
+
+// TODO: add mod loader back in later
+#undef RETRO_USE_MOD_LOADER 
+#define RETRO_USE_MOD_LOADER (0)
 #else
-#error One of RSDK_USE_DX9, RSDK_USE_DX11, RSDK_USE_SDL2, or RSDK_USE_GL3 must be defined.
+#error One of RSDK_USE_CTR, RSDK_USE_DX9, RSDK_USE_DX11, RSDK_USE_SDL2, or RSDK_USE_GL3 must be defined.
 #endif
 
 #if !defined(_MINGW) && !defined(RSDK_USE_SDL2)
@@ -422,6 +438,10 @@ enum GameRegions {
 #include <SDL.h>
 #endif // ! USING_VCPKG
 #endif // ! RETRO_RENDERDEVICE_SDL2
+
+#if RETRO_RENDERDEVICE_CTR || RETRO_INPUTDEVICE_CTR || RETRO_RENDERDEVICE_CTR
+#include <3ds.h>
+#endif
 
 #include <theora/theoradec.h>
 

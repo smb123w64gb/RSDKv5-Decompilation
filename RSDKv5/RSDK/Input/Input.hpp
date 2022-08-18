@@ -24,7 +24,7 @@ enum InputSlotIDs {
 };
 
 enum InputDeviceTypes {
-    DEVICE_TYPE_NONE,
+    DEVICE_TYPE_NONE,   
     DEVICE_TYPE_KEYBOARD,
     DEVICE_TYPE_CONTROLLER,
     DEVICE_TYPE_UNKNOWN,
@@ -492,6 +492,10 @@ extern int32 gamePadCount;
 
 #if RETRO_INPUTDEVICE_PDBOAT
 #include "Paddleboat/PDBInputDevice.hpp"
+#endif
+
+#if RETRO_INPUTDEVICE_CTR
+#include "CTR/CTRInputDevice.hpp"
 #endif
 
 // Initializes the input devices & the backend APIs powering em

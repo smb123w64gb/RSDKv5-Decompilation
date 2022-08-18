@@ -252,6 +252,8 @@ private:
 #include "GLFW/GLFWRenderDevice.hpp"
 #elif RETRO_RENDERDEVICE_EGL
 #include "EGL/EGLRenderDevice.hpp"
+#elif RETRO_RENDERDEVICE_CTR
+#include "CTR/CTRRenderDevice.hpp"
 #endif
 
 extern DrawList drawGroups[DRAWGROUP_COUNT];
