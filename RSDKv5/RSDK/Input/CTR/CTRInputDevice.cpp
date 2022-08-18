@@ -1,3 +1,5 @@
+#include <3ds.h>
+
 using namespace RSDK;
 
 void RSDK::SKU::InputDeviceCTR::UpdateInput()

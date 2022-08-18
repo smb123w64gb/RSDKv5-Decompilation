@@ -86,6 +86,7 @@ enum GameRegions {
 #define RETRO_iOS     (6)
 #define RETRO_ANDROID (7)
 #define RETRO_UWP     (8)
+#define RETRO_3DS     (9)
 
 // ============================
 // PLATFORMS (used mostly in legacy but could come in handy here)
@@ -136,6 +137,9 @@ enum GameRegions {
 #define RETRO_DEVICETYPE (RETRO_STANDARD)
 #elif defined __linux__
 #define RETRO_PLATFORM   (RETRO_LINUX)
+#define RETRO_DEVICETYPE (RETRO_STANDARD)
+#elif defined __3DS__
+#define RETRO_PLATFORM   (RETRO_3DS)
 #define RETRO_DEVICETYPE (RETRO_STANDARD)
 #else
 #define RETRO_PLATFORM   (RETRO_WIN)
@@ -277,19 +281,6 @@ enum GameRegions {
 
 #undef RETRO_INPUTDEVICE_GLFW
 #define RETRO_INPUTDEVICE_GLFW (1)
-#elif defined(RSDK_USE_CTR)
-#undef RETRO_RENDERDEVICE_CTR
-#define RETRO_RENDERDEVICE_CTR (1)
-
-#undef RETRO_AUDIODEVICE_CTR
-#define RETRO_AUDIODEVICE_CTR (1)
-
-#undef RETRO_INPUTDEVICE_CTR 
-#define RETRO_INPUTDEVICE_CTR (1)
-
-// TODO: add mod loader back in later
-#undef RETRO_USE_MOD_LOADER 
-#define RETRO_USE_MOD_LOADER (0)
 #else
 #error One of RSDK_USE_CTR, RSDK_USE_DX9, RSDK_USE_DX11, RSDK_USE_SDL2, or RSDK_USE_GL3 must be defined.
 #endif
@@ -396,6 +387,29 @@ enum GameRegions {
 #undef RETRO_INPUTDEVICE_SDL2
 #define RETRO_INPUTDEVICE_SDL2 (1)
 
+#elif RETRO_PLATFORM == RETRO_3DS
+#undef RETRO_RENDERDEVICE_SDL2 
+#undef RETRO_AUDIODEVICE_SDL2 
+#undef RETRO_INPUTDEVICE_SDL2
+
+#undef RETRO_INPUTDEVICE_KEYBOARD 
+
+#if defined RSDK_USE_CTR
+#undef RETRO_RENDERDEVICE_CTR
+#define RETRO_RENDERDEVICE_CTR (1)
+
+#undef RETRO_AUDIODEVICE_CTR
+#define RETRO_AUDIODEVICE_CTR (1)
+
+#undef RETRO_INPUTDEVICE_CTR 
+#define RETRO_INPUTDEVICE_CTR (1)
+#else
+#error RSDK_USE_CTR must be defined.
+#endif
+
+// TODO: add mod loader back in later
+#undef RETRO_USE_MOD_LOADER 
+#define RETRO_USE_MOD_LOADER (0)
 #endif
 
 #if RETRO_PLATFORM == RETRO_WIN || RETRO_PLATFORM == RETRO_UWP
@@ -439,7 +453,7 @@ enum GameRegions {
 #endif // ! USING_VCPKG
 #endif // ! RETRO_RENDERDEVICE_SDL2
 
-#if RETRO_RENDERDEVICE_CTR || RETRO_INPUTDEVICE_CTR || RETRO_RENDERDEVICE_CTR
+#if RETRO_PLATFORM == RETRO_3DS
 #include <3ds.h>
 #endif
 

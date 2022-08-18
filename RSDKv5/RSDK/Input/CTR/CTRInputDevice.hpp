@@ -20,5 +20,5 @@ namespace SKU
     uint8 stateZ;
     uint8 stateStart;
     uint8 stateSelect;
-  }
+  };
 }

@@ -1,7 +1,10 @@
+// compiler throws an error unless this is included?
+#include <3ds.h>
+
 bool RenderDevice::Init()
 {
   gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, true);
-  consoleInit();
+  consoleInit(GFX_BOTTOM, NULL);
 
   // dummy out later maybe possibly
   printf("RSDKv5 3DS: RenderDevice init\n \
@@ -58,7 +61,7 @@ void RenderDevice::SetupVideoTexture_YUV422(int32 width, int32 height, uint8* im
   return;
 }
 
-void RenderDevice::SetupVideoTexture_YUV424(int32 width, int32 height, uint9* imagePixels)
+void RenderDevice::SetupVideoTexture_YUV424(int32 width, int32 height, uint8* imagePixels)
 {
   return;
 }
@@ -119,4 +122,9 @@ void RenderDevice::GetDisplays()
 {
   // TODO: implement, if needed
   return;
+}
+
+void RenderDevice::GetWindowSize(int32* width, int32* height) {
+  *width = 400;
+  *height = 240;
 }

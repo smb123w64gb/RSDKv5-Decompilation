@@ -17,12 +17,6 @@ void AudioDevice::ProcessAudioMixing(void* stream, int32 length)
   return;
 }
 
-void AudioDevice::FrameInit()
-{
-  // TODO: everything 
-  return;
-}
-
 void AudioDevice::HandleStreamLoad(ChannelInfo* channel, bool32 async)
 {
   // TODO: everything

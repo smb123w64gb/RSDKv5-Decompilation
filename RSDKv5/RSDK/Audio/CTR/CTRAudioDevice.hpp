@@ -1,3 +1,6 @@
+#define LockAudioDevice() { }
+#define UnlockAudioDevice() { }
+
 namespace RSDK
 {
 
@@ -16,6 +19,6 @@ namespace RSDK
     private:
       static void InitAudioChannels();
       static void InitMixBuffer();
-  }
+  };
 
 } // namespace RSDK

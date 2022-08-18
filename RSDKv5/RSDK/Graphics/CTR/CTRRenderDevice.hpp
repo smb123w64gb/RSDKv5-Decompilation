@@ -2,6 +2,17 @@ using ShaderEntry = ShaderEntryBase;
 
 class RenderDevice : public RenderDeviceBase
 {
+public:
+  struct WindowInfo {
+    union {
+      uint32 width;
+      uint32 height;
+      uint32 refresh_rate;
+    } * displays;
+  };
+
+  static WindowInfo displayInfo;
+
   static bool Init();
   static void CopyFrameBuffer();
   static void ProcessDimming();
@@ -19,6 +30,9 @@ class RenderDevice : public RenderDeviceBase
 
   static void InitFPSCap();
   static bool CheckFPSCap();
+  static void UpdateFPSCap();
+
+  static void GetWindowSize(int32* width, int32* height);
 
   static void LoadShader(const char* fileName, bool32 linear);
 private:
@@ -28,4 +42,4 @@ private:
   static bool InitGraphicsAPI();
 
   static void GetDisplays();
-}
+};
