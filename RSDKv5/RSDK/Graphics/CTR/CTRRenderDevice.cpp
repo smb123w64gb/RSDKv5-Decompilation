@@ -4,8 +4,8 @@ bool RenderDevice::Init()
   consoleInit(GFX_BOTTOM, NULL);
 
   // dummy out later maybe possibly
-  printf("RSDKv5 3DS: RenderDevice init\n \
-          The programmer has a nap. Hold out! Programmer!\n");
+  printf("RSDKv5 3DS: RenderDevice init\n");
+  printf("The programmer has a nap. Hold out!\nProgrammer!\n");
 
   gfxSetScreenFormat(GFX_TOP, GSP_RGB565_OES);
 
