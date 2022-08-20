@@ -1,4 +1,5 @@
 #include "RSDK/Core/RetroEngine.hpp"
+#include <algorithm>
 
 #if RETRO_REV0U
 #include "Legacy/Scene3DLegacy.cpp"
