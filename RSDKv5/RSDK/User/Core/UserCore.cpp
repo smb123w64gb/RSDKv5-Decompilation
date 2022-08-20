@@ -287,7 +287,7 @@ void RSDK::LoadSettingsINI()
 
     dictionary *ini = iniparser_load(pathBuffer);
 
-    int32 defaultKeyMaps[PLAYER_COUNT + 1][KEY_MAX] = {
+    int32 defaultKeyMaps[PLAYER_COUNT + 1][RSDK_KEY_MAX] = {
         { KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING,
           KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING },
 
@@ -368,40 +368,40 @@ void RSDK::LoadSettingsINI()
             char buffer[0x30];
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:up", i);
-            controller[i].keyUp.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_UP]);
+            controller[i].keyUp.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_UP]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:down", i);
-            controller[i].keyDown.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_DOWN]);
+            controller[i].keyDown.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_DOWN]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:left", i);
-            controller[i].keyLeft.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_LEFT]);
+            controller[i].keyLeft.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_LEFT]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:right", i);
-            controller[i].keyRight.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_RIGHT]);
+            controller[i].keyRight.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_RIGHT]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:buttonA", i);
-            controller[i].keyA.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_A]);
+            controller[i].keyA.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_A]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:buttonB", i);
-            controller[i].keyB.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_B]);
+            controller[i].keyB.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_B]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:buttonC", i);
-            controller[i].keyC.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_C]);
+            controller[i].keyC.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_C]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:buttonX", i);
-            controller[i].keyX.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_X]);
+            controller[i].keyX.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_X]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:buttonY", i);
-            controller[i].keyY.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_Y]);
+            controller[i].keyY.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_Y]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:buttonZ", i);
-            controller[i].keyZ.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_Z]);
+            controller[i].keyZ.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_Z]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:start", i);
-            controller[i].keyStart.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_START]);
+            controller[i].keyStart.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_START]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:select", i);
-            controller[i].keySelect.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_SELECT]);
+            controller[i].keySelect.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_SELECT]);
         }
 
         gamePadCount = 0;
@@ -522,18 +522,18 @@ void RSDK::LoadSettingsINI()
 #endif
 
         for (int32 i = CONT_P1; i <= PLAYER_COUNT; ++i) {
-            controller[i].keyUp.keyMap     = defaultKeyMaps[i][KEY_UP];
-            controller[i].keyDown.keyMap   = defaultKeyMaps[i][KEY_DOWN];
-            controller[i].keyLeft.keyMap   = defaultKeyMaps[i][KEY_LEFT];
-            controller[i].keyRight.keyMap  = defaultKeyMaps[i][KEY_RIGHT];
-            controller[i].keyA.keyMap      = defaultKeyMaps[i][KEY_A];
-            controller[i].keyB.keyMap      = defaultKeyMaps[i][KEY_B];
-            controller[i].keyC.keyMap      = defaultKeyMaps[i][KEY_C];
-            controller[i].keyX.keyMap      = defaultKeyMaps[i][KEY_X];
-            controller[i].keyY.keyMap      = defaultKeyMaps[i][KEY_Y];
-            controller[i].keyZ.keyMap      = defaultKeyMaps[i][KEY_Z];
-            controller[i].keyStart.keyMap  = defaultKeyMaps[i][KEY_START];
-            controller[i].keySelect.keyMap = defaultKeyMaps[i][KEY_SELECT];
+            controller[i].keyUp.keyMap     = defaultKeyMaps[i][RSDK_KEY_UP];
+            controller[i].keyDown.keyMap   = defaultKeyMaps[i][RSDK_KEY_DOWN];
+            controller[i].keyLeft.keyMap   = defaultKeyMaps[i][RSDK_KEY_LEFT];
+            controller[i].keyRight.keyMap  = defaultKeyMaps[i][RSDK_KEY_RIGHT];
+            controller[i].keyA.keyMap      = defaultKeyMaps[i][RSDK_KEY_A];
+            controller[i].keyB.keyMap      = defaultKeyMaps[i][RSDK_KEY_B];
+            controller[i].keyC.keyMap      = defaultKeyMaps[i][RSDK_KEY_C];
+            controller[i].keyX.keyMap      = defaultKeyMaps[i][RSDK_KEY_X];
+            controller[i].keyY.keyMap      = defaultKeyMaps[i][RSDK_KEY_Y];
+            controller[i].keyZ.keyMap      = defaultKeyMaps[i][RSDK_KEY_Z];
+            controller[i].keyStart.keyMap  = defaultKeyMaps[i][RSDK_KEY_START];
+            controller[i].keySelect.keyMap = defaultKeyMaps[i][RSDK_KEY_SELECT];
         }
 
         SaveSettingsINI(true);
