@@ -782,7 +782,7 @@ void RSDK::ProcessObjectDrawLists()
 #if RETRO_USE_MOD_LOADER
                         RunModCallbacks(MODCB_ONSCANLINECB, (void *)layer->scanlineCallback);
 #endif
-                        if (layer->scanlineCallback)
+                        if (layer->scanlineCallback && scanlines)
                             layer->scanlineCallback(scanlines);
                         else
                             ProcessParallax(layer);

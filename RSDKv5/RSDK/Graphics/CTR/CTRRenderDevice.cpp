@@ -1,3 +1,8 @@
+#define SCREEN_XSIZE (400)
+#define SCREEN_YSIZE (240)
+
+using namespace RSDK;
+
 bool RenderDevice::Init()
 {
   gfxInitDefault();
@@ -8,29 +13,73 @@ bool RenderDevice::Init()
   printf("The programmer has a nap. Hold out!\nProgrammer!\n");
 
   gfxSetScreenFormat(GFX_TOP, GSP_RGB565_OES);
+  gfxSetDoubleBuffering(GFX_TOP, true);
+
+  scanlines = (ScanlineInfo*) malloc(SCREEN_YSIZE * sizeof(ScanlineInfo));
+  if (!scanlines)
+    return false;
+
+  engine.inFocus = 1;
+  videoSettings.windowState = WINDOWSTATE_ACTIVE;
+  videoSettings.dimMax = 1.0;
+  videoSettings.dimPercent = 1.0;
+
+  RSDK::SetScreenSize(0, SCREEN_XSIZE, SCREEN_YSIZE);
+
+  memset(screens[0].frameBuffer, 0, SCREEN_XSIZE * SCREEN_YSIZE * sizeof(uint16));
 
   return true;
 }
 
 void RenderDevice::CopyFrameBuffer()
 {
-  // TODO: implement
   return;
 }
 
-void RenderDevice::ProcessDimming()
-{
-  // TODO: figure out what this is, THEN implement
-  return;
-}
-
+// https://github.com/JeffRuLz/Sonic-1-2-2013-Decompilation/blob/main/RSDKv4/3ds/3ds.cpp#L141
 void RenderDevice::FlipScreen()
 {
+  u16 *src = screens[0].frameBuffer;
+  u16 *dst = (uint16*) gfxGetFramebuffer(GFX_TOP, GFX_LEFT, 0, 0);
+
+  switch (videoSettings.screenCount) {
+    default:
+    case 0:
+      // image/video buffer, break
+      break;
+    case 1:
+      for (int y = 0; y < SCREEN_YSIZE; y++) {
+        for (int x = 0; x < SCREEN_XSIZE; x++) {
+          dst[((x * 240) + (240 - y - 1))] = *src++;
+        }
+      }
+      break;
+
+    // the separate screens used for competition mode will likely 
+    // never be supported by the 3DS port
+    case 2:
+    case 3:
+    case 4:
+      break;
+  }
+
   gfxFlushBuffers();
+  gfxSwapBuffers();
+
+  /*
+  if (windowRefreshDelay > 0) {
+    windowRefreshDelay--;
+    if (!windowRefreshDelay)
+      UpdateGameWindow();
+  }
+  */
 }
 
 void RenderDevice::Release(bool32 isRefresh)
 {
+  if (scanlines)
+    free(scanlines);
+
   if (!isRefresh) {
     gfxExit();
   }
@@ -38,8 +87,7 @@ void RenderDevice::Release(bool32 isRefresh)
 
 void RenderDevice::RefreshWindow()
 {
-  gfxSwapBuffers();
-  gspWaitForVBlank();
+
 }
 
 void RenderDevice::SetupImageTexture(int32 width, int32 height, uint8* imagePixels)
@@ -78,6 +126,7 @@ void RenderDevice::InitFPSCap()
 
 bool RenderDevice::CheckFPSCap()
 {
+  gspWaitForVBlank();
   return true;
 }
 
