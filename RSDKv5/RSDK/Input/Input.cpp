@@ -135,6 +135,11 @@ void RSDK::InitInputDevices()
 #if RETRO_INPUTDEVICE_PDBOAT
     SKU::InitPaddleboatInputAPI();
 #endif
+
+
+#if RETRO_INPUTDEVICE_CTR
+    SKU::InitCTRInputAPI();
+#endif
 }
 
 void RSDK::ClearInput()

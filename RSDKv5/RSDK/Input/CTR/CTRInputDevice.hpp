@@ -4,8 +4,6 @@ namespace SKU
     void UpdateInput();
     void ProcessInput(int32 controllerID);
 
-    InputState* mappings[12]; 
-
     uint16 buttonMasks;
     uint16 prevButtonMasks;
     uint8 controllerID;
@@ -25,4 +23,5 @@ namespace SKU
   };
 
   void InitCTRInputAPI();
+  InputDeviceCTR* InitCTRDevice(uint32 id);
 }

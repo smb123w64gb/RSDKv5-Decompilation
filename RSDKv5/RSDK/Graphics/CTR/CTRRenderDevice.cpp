@@ -28,6 +28,8 @@ bool RenderDevice::Init()
 
   memset(screens[0].frameBuffer, 0, SCREEN_XSIZE * SCREEN_YSIZE * sizeof(uint16));
 
+  InitInputDevices();
+
   return true;
 }
 

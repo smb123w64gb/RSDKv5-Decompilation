@@ -8,7 +8,6 @@ using namespace RSDK;
 
 // all render devices need to access the initial vertex buffer :skull:
 
-
 // clang-format off
 #if RETRO_REV02
 const RenderVertex rsdkVertexBuffer[60] = {
