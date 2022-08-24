@@ -7,12 +7,12 @@ static u32 remap[12] = {
   KEY_DOWN,
   KEY_LEFT,
   KEY_RIGHT,
-  KEY_Y,
-  KEY_B,
   KEY_A,
-  KEY_L,
+  KEY_B,
+  NULL,
+  KEY_Y,
   KEY_X,
-  KEY_R,
+  NULL,
   KEY_START,
   KEY_SELECT
 };
@@ -35,7 +35,10 @@ void RSDK::SKU::InputDeviceCTR::UpdateInput()
 
 void RSDK::SKU::InputDeviceCTR::ProcessInput(int32 controllerID)
 {
-  for (int i = 0; i < 1; i++) {
+  for (int i = 0; i < PLAYER_COUNT; i++) {
+    if (i == 2)
+      continue;
+
     controller[i].keyUp.press       |= mappings[0].press;
     controller[i].keyDown.press     |= mappings[1].press;
     controller[i].keyLeft.press     |= mappings[2].press;
@@ -82,14 +85,14 @@ RSDK::SKU::InputDeviceCTR *RSDK::SKU::InitCTRDevice(uint32 id) {
 }
 
 void RSDK::SKU::InitCTRInputAPI() {
-  uint32 id = 0;
+  uint32 id = 1;
   GenerateHashCRC(&id, "CTRDevice0");
 
   inputDeviceCount = 0;
 
   InputDeviceCTR* device = InitCTRDevice(id);
   if (device) {
-    device->controllerID = 0;
+    device->controllerID = 1;
   }
 
   return;

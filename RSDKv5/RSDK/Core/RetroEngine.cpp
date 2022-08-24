@@ -95,7 +95,11 @@ int32 RSDK::RunRetroEngine(int32 argc, char *argv[])
 
     RenderDevice::InitFPSCap();
 
+#if RETRO_PLATFORM == RETRO_3DS
+    while (aptMainLoop() && RenderDevice::isRunning) {
+#else
     while (RenderDevice::isRunning) {
+#endif
         RenderDevice::isRunning = RenderDevice::ProcessEvents();
 
         if (!RenderDevice::isRunning)

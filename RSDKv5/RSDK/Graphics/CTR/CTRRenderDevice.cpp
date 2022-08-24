@@ -117,7 +117,7 @@ void RenderDevice::SetupVideoTexture_YUV424(int32 width, int32 height, uint8* im
 
 bool RenderDevice::ProcessEvents()
 {
-  return aptMainLoop();
+  return true;
 }
 
 // TODO: re-use the frame limiter @JeffRuLz implemented with the CD port
