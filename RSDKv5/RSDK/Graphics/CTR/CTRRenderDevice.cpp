@@ -177,6 +177,9 @@ void RenderDevice::GetDisplays()
 }
 
 void RenderDevice::GetWindowSize(int32* width, int32* height) {
-  *width = 400;
-  *height = 240;
+  if (width)
+    *width = 400;
+
+  if (height)
+    *height = 240;
 }
