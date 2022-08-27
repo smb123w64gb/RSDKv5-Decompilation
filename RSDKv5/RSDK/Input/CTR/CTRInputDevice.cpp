@@ -33,6 +33,8 @@ void RSDK::SKU::InputDeviceCTR::UpdateInput()
   }
 }
 
+// TODO: the code below *technically* works, but is kind of a mess.
+// Clean up later.
 void RSDK::SKU::InputDeviceCTR::ProcessInput(int32 controllerID)
 {
   for (int i = 0; i < PLAYER_COUNT; i++) {
