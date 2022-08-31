@@ -340,6 +340,7 @@ void RSDK::LoadSettingsINI()
         sprintf_s(gameLogicName, (int32)sizeof(gameLogicName), "Game");
 #endif
 
+#if RETRO_PLATFORM != RETRO_3DS
         videoSettings.windowed       = iniparser_getboolean(ini, "Video:windowed", true);
         videoSettings.bordered       = iniparser_getboolean(ini, "Video:border", true);
         videoSettings.exclusiveFS    = iniparser_getboolean(ini, "Video:exclusiveFS", false);
@@ -355,6 +356,7 @@ void RSDK::LoadSettingsINI()
         videoSettings.refreshRate   = iniparser_getint(ini, "Video:refreshRate", 60);
         videoSettings.shaderSupport = iniparser_getboolean(ini, "Video:shaderSupport", true);
         videoSettings.shaderID      = iniparser_getint(ini, "Video:screenShader", SHADER_NONE);
+#endif
 
 #if !RETRO_USE_ORIGINAL_CODE
         customSettings.maxPixWidth = iniparser_getint(ini, "Video:maxPixWidth", DEFAULT_PIXWIDTH);
@@ -364,6 +366,7 @@ void RSDK::LoadSettingsINI()
         engine.streamVolume   = iniparser_getdouble(ini, "Audio:streamVolume", 0.8);
         engine.soundFXVolume  = iniparser_getdouble(ini, "Audio:sfxVolume", 1.0);
 
+#if RETRO_PLATFORM != RETRO_3DS
         for (int32 i = CONT_P1; i <= PLAYER_COUNT; ++i) {
             char buffer[0x30];
 
@@ -403,6 +406,7 @@ void RSDK::LoadSettingsINI()
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:select", i);
             controller[i].keySelect.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_SELECT]);
         }
+#endif
 
         gamePadCount = 0;
         while (true) {
@@ -418,6 +422,7 @@ void RSDK::LoadSettingsINI()
 
         AllocateStorage((void **)&gamePadMappings, sizeof(GamePadMappings) * gamePadCount, DATASET_STG, true);
 
+#if RETRO_PLATFORM != RETRO_3DS
         for (int32 i = CONT_P1; i <= gamePadCount; ++i) {
             char buffer[0x30];
             char mappings[0x100];
@@ -468,6 +473,7 @@ void RSDK::LoadSettingsINI()
                 tok = strtok(0, " ,.-");
             }
         }
+#endif
 
         iniparser_freedict(ini);
     }
@@ -515,7 +521,11 @@ void RSDK::LoadSettingsINI()
 #endif
         }
 
+#if RETRO_PLATFORM == RETRO_3DS
+        engine.confirmFlip = true;
+#else
         engine.confirmFlip = customSettings.confirmButtonFlip;
+#endif
         engine.XYFlip      = customSettings.xyButtonFlip;
 #else
         sprintf_s(gameLogicName, (int32)sizeof(gameLogicName), "Game");
