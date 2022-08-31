@@ -86,6 +86,7 @@ enum GameRegions {
 #define RETRO_iOS     (6)
 #define RETRO_ANDROID (7)
 #define RETRO_UWP     (8)
+#define RETRO_3DS     (9)
 
 // ============================
 // PLATFORMS (used mostly in legacy but could come in handy here)
@@ -137,6 +138,9 @@ enum GameRegions {
 #elif defined __linux__
 #define RETRO_PLATFORM   (RETRO_LINUX)
 #define RETRO_DEVICETYPE (RETRO_STANDARD)
+#elif defined __3DS__
+#define RETRO_PLATFORM   (RETRO_3DS)
+#define RETRO_DEVICETYPE (RETRO_STANDARD)
 #else
 #define RETRO_PLATFORM   (RETRO_WIN)
 #define RETRO_DEVICETYPE (RETRO_STANDARD)
@@ -166,6 +170,7 @@ enum GameRegions {
 #define RETRO_RENDERDEVICE_SDL2 (0)
 #define RETRO_RENDERDEVICE_GLFW (0)
 #define RETRO_RENDERDEVICE_EGL  (0)
+#define RETRO_RENDERDEVICE_CTR  (0)
 
 // ============================
 // AUDIO DEVICE BACKENDS
@@ -175,6 +180,7 @@ enum GameRegions {
 // CUSTOM
 #define RETRO_AUDIODEVICE_SDL2 (0)
 #define RETRO_AUDIODEVICE_OBOE (0)
+#define RETRO_AUDIODEVICE_CTR  (0)
 
 // ============================
 // INPUT DEVICE BACKENDS
@@ -185,9 +191,10 @@ enum GameRegions {
 #define RETRO_INPUTDEVICE_STEAM    (0)
 #define RETRO_INPUTDEVICE_NX       (0)
 // CUSTOM
-#define RETRO_INPUTDEVICE_SDL2   (0)
+#define RETRO_INPUTDEVICE_SDL2   (1)
 #define RETRO_INPUTDEVICE_GLFW   (0)
 #define RETRO_INPUTDEVICE_PDBOAT (0)
+#define RETRO_INPUTDEVICE_CTR    (0)
 
 // ============================
 // USER CORE BACKENDS
@@ -227,7 +234,7 @@ enum GameRegions {
 
 // enables the use of the mod loader
 #ifndef RETRO_USE_MOD_LOADER
-#define RETRO_USE_MOD_LOADER (!RETRO_USE_ORIGINAL_CODE && 1)
+//#define RETRO_USE_MOD_LOADER (!RETRO_USE_ORIGINAL_CODE && 1)
 #endif
 
 // defines the version of the mod loader, this should be changed ONLY if the ModFunctionTable is updated in any way
@@ -275,7 +282,7 @@ enum GameRegions {
 #undef RETRO_INPUTDEVICE_GLFW
 #define RETRO_INPUTDEVICE_GLFW (1)
 #else
-#error One of RSDK_USE_DX9, RSDK_USE_DX11, RSDK_USE_SDL2, or RSDK_USE_GL3 must be defined.
+#error One of RSDK_USE_CTR, RSDK_USE_DX9, RSDK_USE_DX11, RSDK_USE_SDL2, or RSDK_USE_GL3 must be defined.
 #endif
 
 #if !defined(_MINGW) && !defined(RSDK_USE_SDL2)
@@ -380,6 +387,26 @@ enum GameRegions {
 #undef RETRO_INPUTDEVICE_SDL2
 #define RETRO_INPUTDEVICE_SDL2 (1)
 
+#elif RETRO_PLATFORM == RETRO_3DS
+#undef RETRO_RENDERDEVICE_SDL2 
+#undef RETRO_AUDIODEVICE_SDL2 
+#undef RETRO_INPUTDEVICE_SDL2
+
+#undef RETRO_INPUTDEVICE_KEYBOARD 
+#undef RETRO_USE_MOD_LOADER
+
+#if defined RSDK_USE_CTR
+#undef RETRO_RENDERDEVICE_CTR
+#define RETRO_RENDERDEVICE_CTR (1)
+
+#undef RETRO_AUDIODEVICE_CTR
+#define RETRO_AUDIODEVICE_CTR (1)
+
+#undef RETRO_INPUTDEVICE_CTR 
+#define RETRO_INPUTDEVICE_CTR (1)
+#else
+#error RSDK_USE_CTR must be defined.
+#endif
 #endif
 
 #if RETRO_PLATFORM == RETRO_WIN || RETRO_PLATFORM == RETRO_UWP
@@ -422,6 +449,7 @@ enum GameRegions {
 #include <SDL.h>
 #endif // ! USING_VCPKG
 #endif // ! RETRO_RENDERDEVICE_SDL2
+
 
 #include <theora/theoradec.h>
 
@@ -474,6 +502,11 @@ enum GameRegions {
 #include <theora/theoradec.h>
 
 #undef RETRO_USING_MOUSE
+#elif RETRO_PLATFORM == RETRO_3DS
+#define PrintConsole _PrintConsole
+#include <3ds.h>
+#undef PrintConsole
+
 #endif
 
 // ============================
@@ -598,6 +631,15 @@ void InitEngine();
 void StartGameObjects();
 
 #if RETRO_USE_MOD_LOADER
+const void *FirstXMLChildElement(void *doc, const void *elementPtr, const char *name);
+const void *NextXMLSiblingElement(void *doc, const void *elementPtr, const char *name);
+
+const void *FindXMLAttribute(const void *elementPtr, const char *name);
+const char *GetXMLAttributeName(const void *attributePtr);
+int32 GetXMLAttributeValueInt(const void *attributePtr);
+bool32 GetXMLAttributeValueBool(const void *attributePtr);
+const char *GetXMLAttributeValueString(const void *attributePtr);
+
 void LoadXMLObjects();
 void LoadXMLSoundFX();
 int32 LoadXMLStages(int32 mode, int32 gcListCount, int32 gcStageCount);

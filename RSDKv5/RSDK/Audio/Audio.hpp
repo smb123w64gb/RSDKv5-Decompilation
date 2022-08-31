@@ -184,6 +184,8 @@ void ClearGlobalSfx();
 #include "SDL2/SDL2AudioDevice.hpp"
 #elif RETRO_AUDIODEVICE_OBOE
 #include "Oboe/OboeAudioDevice.hpp"
+#elif RETRO_AUDIODEVICE_CTR
+#include "CTR/CTRAudioDevice.hpp"
 #endif
 
 #endif

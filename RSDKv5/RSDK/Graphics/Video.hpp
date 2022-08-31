@@ -1,12 +1,16 @@
 #ifndef VIDEO_H
 #define VIDEO_H
 
+// TODO: video functionality currently stubbed out on 3DS,
+// don't forget to replace w/ 3ds-theoraplayer later
+
 namespace RSDK
 {
 
 struct VideoManager {
     static FileInfo file;
 
+#if RETRO_PLATFORM != RETRO_3DS
     static ogg_sync_state oy;
     static ogg_page og;
     static ogg_stream_state vo;
@@ -20,6 +24,7 @@ struct VideoManager {
     static th_pixel_fmt pixelFormat;
     static ogg_int64_t granulePos;
     static bool32 initializing;
+#endif
 };
 
 bool32 LoadVideo(const char *filename, double startDelay, bool32 (*skipCallback)());

@@ -24,7 +24,7 @@ enum InputSlotIDs {
 };
 
 enum InputDeviceTypes {
-    DEVICE_TYPE_NONE,
+    DEVICE_TYPE_NONE,   
     DEVICE_TYPE_KEYBOARD,
     DEVICE_TYPE_CONTROLLER,
     DEVICE_TYPE_UNKNOWN,
@@ -63,19 +63,19 @@ enum InputDeviceAPIs {
 };
 
 enum ControllerKeys {
-    KEY_UP,
-    KEY_DOWN,
-    KEY_LEFT,
-    KEY_RIGHT,
-    KEY_A,
-    KEY_B,
-    KEY_C,
-    KEY_X,
-    KEY_Y,
-    KEY_Z,
-    KEY_START,
-    KEY_SELECT,
-    KEY_MAX,
+    RSDK_KEY_UP,
+    RSDK_KEY_DOWN,
+    RSDK_KEY_LEFT,
+    RSDK_KEY_RIGHT,
+    RSDK_KEY_A,
+    RSDK_KEY_B,
+    RSDK_KEY_C,
+    RSDK_KEY_X,
+    RSDK_KEY_Y,
+    RSDK_KEY_Z,
+    RSDK_KEY_START,
+    RSDK_KEY_SELECT,
+    RSDK_KEY_MAX,
 };
 
 enum KeyMasks {
@@ -492,6 +492,10 @@ extern int32 gamePadCount;
 
 #if RETRO_INPUTDEVICE_PDBOAT
 #include "Paddleboat/PDBInputDevice.hpp"
+#endif
+
+#if RETRO_INPUTDEVICE_CTR
+#include "CTR/CTRInputDevice.hpp"
 #endif
 
 // Initializes the input devices & the backend APIs powering em

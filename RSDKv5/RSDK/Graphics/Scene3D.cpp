@@ -1,5 +1,4 @@
 #include "RSDK/Core/RetroEngine.hpp"
-#include <algorithm>
 
 #if RETRO_REV0U
 #include "Legacy/Scene3DLegacy.cpp"
@@ -377,7 +376,7 @@ void RSDK::MatrixInverse(Matrix *dest, Matrix *matrix)
     for (int32 i = 0; i < 0x10; ++i) dest->values[i / 4][i % 4] = (int32)inv[i];
 }
 
-uint16 RSDK::LoadMesh(const char *filename, int32 scope)
+uint16 RSDK::LoadMesh(const char *filename, Scopes scope)
 {
     char fullFilePath[0x100];
     sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Meshes/%s", filename);
@@ -465,7 +464,7 @@ uint16 RSDK::LoadMesh(const char *filename, int32 scope)
     }
     return -1;
 }
-uint16 RSDK::Create3DScene(const char *name, uint16 vertexLimit, int32 scope)
+uint16 RSDK::Create3DScene(const char *name, uint16 vertexLimit, Scopes scope)
 {
     RETRO_HASH_MD5(hash);
     GEN_HASH_MD5(name, hash);
@@ -861,7 +860,7 @@ void RSDK::Draw3DScene(uint16 sceneID)
             scn->faceBuffer[i].index = vertIndex;
             vertIndex += scn->faceVertCounts[i];
         }
-        /*
+
         // sort vertices by depth
         for (int32 i = 0; i < scn->faceCount; ++i) {
             for (int32 j = scn->faceCount - 1; j > i; --j) {
@@ -875,10 +874,6 @@ void RSDK::Draw3DScene(uint16 sceneID)
                 }
             }
         }
-        */
-        std::sort(scn->faceBuffer, scn->faceBuffer + scn->faceCount, [](Scene3DFace& a, Scene3DFace& b){
-            return a.depth > b.depth;
-        });
 
         uint8 *vertCnt = scn->faceVertCounts;
         Vector2 vertPos[4];

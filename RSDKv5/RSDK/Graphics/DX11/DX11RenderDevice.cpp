@@ -1368,18 +1368,13 @@ void RenderDevice::ProcessEvent(MSG Msg)
         case WM_SYSKEYDOWN: {
             WPARAM activeButtons = Msg.wParam;
             switch (Msg.wParam) {
-                // shift key
-                case VK_SHIFT:
-                    activeButtons = MapVirtualKey(((Msg.lParam >> 16) & 0xFF), MAPVK_VSC_TO_VK_EX);
-                    break;
+                case VK_SHIFT: activeButtons = MapVirtualKey(((Msg.lParam >> 8) & 0xFF), MAPVK_VSC_TO_VK_EX); break;
 
-                    // CTRL key
-                case VK_CONTROL:
-                    activeButtons = VK_LCONTROL + (((Msg.lParam >> 24) & 0xFF) & 1);
-                    break;
+                case VK_CONTROL: activeButtons = VK_LCONTROL + ((Msg.lParam >> 8) & 1); break;
 
-                    // ALT key
-                case VK_MENU: activeButtons = VK_LMENU + (((Msg.lParam >> 24) & 0xFF) & 1); break;
+                case VK_MENU: // ALT key
+                    activeButtons = VK_LMENU + ((Msg.lParam >> 8) & 1);
+                    break;
             }
 
             switch (Msg.wParam) {
@@ -1397,10 +1392,6 @@ void RenderDevice::ProcessEvent(MSG Msg)
                         changedVideoSettings = false;
                         handledMsg           = true;
                     }
-
-#if !RETRO_REV02 && RETRO_INPUTDEVICE_KEYBOARD
-                    RSDK::SKU::specialKeyStates[1] = true;
-#endif
                     break;
 
                 case VK_F4: // alt + f4
@@ -1423,18 +1414,13 @@ void RenderDevice::ProcessEvent(MSG Msg)
         case WM_KEYDOWN: {
             WPARAM activeButtons = Msg.wParam;
             switch (Msg.wParam) {
-                // shift key
-                case VK_SHIFT:
-                    activeButtons = MapVirtualKey(((Msg.lParam >> 16) & 0xFF), MAPVK_VSC_TO_VK_EX);
-                    break;
+                case VK_SHIFT: activeButtons = MapVirtualKey(((Msg.lParam >> 8) & 0xFF), MAPVK_VSC_TO_VK_EX); break;
 
-                    // CTRL key
-                case VK_CONTROL:
-                    activeButtons = VK_LCONTROL + (((Msg.lParam >> 24) & 0xFF) & 1);
-                    break;
+                case VK_CONTROL: activeButtons = VK_LCONTROL + ((Msg.lParam >> 8) & 1); break;
 
-                    // ALT key
-                case VK_MENU: activeButtons = VK_LMENU + (((Msg.lParam >> 24) & 0xFF) & 1); break;
+                case VK_MENU: // ALT key
+                    activeButtons = VK_LMENU + ((Msg.lParam >> 8) & 1);
+                    break;
             }
 
             // handledMsg = true;
@@ -1470,10 +1456,6 @@ void RenderDevice::ProcessEvent(MSG Msg)
                         handledMsg = false;
 #endif
                     }
-
-#if !RETRO_REV02 && RETRO_INPUTDEVICE_KEYBOARD
-                    RSDK::SKU::specialKeyStates[0] = true;
-#endif
                     break;
 
 #if !RETRO_USE_ORIGINAL_CODE
@@ -1592,18 +1574,6 @@ void RenderDevice::ProcessEvent(MSG Msg)
 #endif
                     break;
 
-#if !RETRO_REV02 && RETRO_INPUTDEVICE_KEYBOARD
-                case VK_ESCAPE:
-                    RSDK::SKU::specialKeyStates[0] = false;
-                    SKU::ClearKeyState(activeButtons);
-                    break;
-
-                case VK_RETURN:
-                    RSDK::SKU::specialKeyStates[1] = false;
-                    SKU::ClearKeyState(activeButtons);
-                    break;
-#endif
-
                 case VK_BACK:
                     engine.gameSpeed = 1;
                     handledMsg       = true;
@@ -1613,39 +1583,20 @@ void RenderDevice::ProcessEvent(MSG Msg)
             break;
         }
 
-        case WM_LBUTTONDOWN: touchInfo.down[0] = 1; touchInfo.count = 1;
-
-#if !RETRO_REV02
-            RSDK::SKU::buttonDownCount++;
-#endif
-
-            handledMsg = true;
+        case WM_LBUTTONDOWN:
+            touchInfo.down[0] = 1;
+            touchInfo.count   = 1;
+            handledMsg        = true;
             break;
 
-        case WM_LBUTTONUP: touchInfo.down[0] = 0; touchInfo.count = 0;
-
-#if !RETRO_REV02
-            RSDK::SKU::buttonDownCount--;
-#endif
-
-            handledMsg = true;
+        case WM_LBUTTONUP:
+            touchInfo.down[0] = 0;
+            touchInfo.count   = 0;
+            handledMsg        = true;
             break;
 
-        case WM_MBUTTONDOWN: handledMsg = true; break;
-
-        case WM_RBUTTONDOWN: handledMsg = true;
-#if !RETRO_REV02 && RETRO_INPUTDEVICE_KEYBOARD
-            RSDK::SKU::specialKeyStates[3] = true;
-            RSDK::SKU::buttonDownCount++;
-#endif
-            break;
-
-        case WM_RBUTTONUP: handledMsg = true;
-#if !RETRO_REV02 && RETRO_INPUTDEVICE_KEYBOARD
-            RSDK::SKU::specialKeyStates[3] = false;
-            RSDK::SKU::buttonDownCount--;
-#endif
-            break;
+        case WM_MBUTTONDOWN:
+        case WM_RBUTTONDOWN: handledMsg = true; break;
     }
 
     if (!handledMsg)
@@ -1704,8 +1655,7 @@ LRESULT CALLBACK RenderDevice::WindowEventCallback(HWND hRecipient, UINT message
 
                 if (AudioDevice::audioFocus == 1) {
                     AudioDevice::audioFocus = 0;
-                    if (AudioDevice::sourceVoice)
-                        AudioDevice::sourceVoice->Start(0, 0);
+                    AudioDevice::sourceVoice->Start(0, 0);
                 }
 
                 GetDisplays();
@@ -1723,8 +1673,7 @@ LRESULT CALLBACK RenderDevice::WindowEventCallback(HWND hRecipient, UINT message
 
                 if (!AudioDevice::audioFocus) {
                     AudioDevice::audioFocus = 1;
-                    if (AudioDevice::sourceVoice)
-                        AudioDevice::sourceVoice->Stop(0, 0);
+                    AudioDevice::sourceVoice->Stop(0, 0);
                 }
 
                 videoSettings.windowState = WINDOWSTATE_INACTIVE;

@@ -287,12 +287,12 @@ void RSDK::LoadSettingsINI()
 
     dictionary *ini = iniparser_load(pathBuffer);
 
-    int32 defaultKeyMaps[PLAYER_COUNT + 1][KEY_MAX] = {
+    int32 defaultKeyMaps[PLAYER_COUNT + 1][RSDK_KEY_MAX] = {
         { KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING,
           KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING },
 
         { VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT, VK_A, VK_S, VK_D, VK_Q, VK_W, VK_E, VK_RETURN, VK_TAB },
-        { VK_NUMPAD8, VK_NUMPAD5, VK_NUMPAD4, VK_NUMPAD6, VK_J, VK_K, KEYMAP_NO_MAPPING, VK_U, VK_I, KEYMAP_NO_MAPPING, VK_OEM_4, VK_OEM_6 },
+        { VK_NUMPAD8, VK_NUMPAD5, VK_NUMPAD4, VK_NUMPAD6, VK_J, VK_J, KEYMAP_NO_MAPPING, VK_U, VK_I, KEYMAP_NO_MAPPING, VK_OEM_4, VK_OEM_6 },
 
         { KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING,
           KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING, KEYMAP_NO_MAPPING },
@@ -314,10 +314,8 @@ void RSDK::LoadSettingsINI()
 
 #if !RETRO_USE_ORIGINAL_CODE
         customSettings.region                    = iniparser_getint(ini, "Game:region", -1);
-        // customSettings.confirmButtonFlip         = iniparser_getboolean(ini, "Game:confirmButtonFlip", false);
-        // customSettings.xyButtonFlip              = iniparser_getboolean(ini, "Game:xyButtonFlip", false);
         customSettings.confirmButtonFlip         = iniparser_getboolean(ini, "Game:faceButtonFlip", false);
-        customSettings.xyButtonFlip              = customSettings.confirmButtonFlip;
+        customSettings.xyButtonFlip              = iniparser_getboolean(ini, "Game:xyButtonFlip", customSettings.confirmButtonFlip);
         customSettings.enableControllerDebugging = iniparser_getboolean(ini, "Game:enableControllerDebugging", false);
         customSettings.disableFocusPause         = iniparser_getboolean(ini, "Game:disableFocusPause", false);
 
@@ -342,6 +340,7 @@ void RSDK::LoadSettingsINI()
         sprintf_s(gameLogicName, (int32)sizeof(gameLogicName), "Game");
 #endif
 
+#if RETRO_PLATFORM != RETRO_3DS
         videoSettings.windowed       = iniparser_getboolean(ini, "Video:windowed", true);
         videoSettings.bordered       = iniparser_getboolean(ini, "Video:border", true);
         videoSettings.exclusiveFS    = iniparser_getboolean(ini, "Video:exclusiveFS", false);
@@ -357,6 +356,7 @@ void RSDK::LoadSettingsINI()
         videoSettings.refreshRate   = iniparser_getint(ini, "Video:refreshRate", 60);
         videoSettings.shaderSupport = iniparser_getboolean(ini, "Video:shaderSupport", true);
         videoSettings.shaderID      = iniparser_getint(ini, "Video:screenShader", SHADER_NONE);
+#endif
 
 #if !RETRO_USE_ORIGINAL_CODE
         customSettings.maxPixWidth = iniparser_getint(ini, "Video:maxPixWidth", DEFAULT_PIXWIDTH);
@@ -366,50 +366,52 @@ void RSDK::LoadSettingsINI()
         engine.streamVolume   = iniparser_getdouble(ini, "Audio:streamVolume", 0.8);
         engine.soundFXVolume  = iniparser_getdouble(ini, "Audio:sfxVolume", 1.0);
 
+#if RETRO_PLATFORM != RETRO_3DS
         for (int32 i = CONT_P1; i <= PLAYER_COUNT; ++i) {
             char buffer[0x30];
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:up", i);
-            controller[i].keyUp.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_UP]);
+            controller[i].keyUp.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_UP]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:down", i);
-            controller[i].keyDown.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_DOWN]);
+            controller[i].keyDown.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_DOWN]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:left", i);
-            controller[i].keyLeft.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_LEFT]);
+            controller[i].keyLeft.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_LEFT]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:right", i);
-            controller[i].keyRight.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_RIGHT]);
+            controller[i].keyRight.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_RIGHT]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:buttonA", i);
-            controller[i].keyA.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_A]);
+            controller[i].keyA.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_A]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:buttonB", i);
-            controller[i].keyB.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_B]);
+            controller[i].keyB.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_B]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:buttonC", i);
-            controller[i].keyC.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_C]);
+            controller[i].keyC.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_C]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:buttonX", i);
-            controller[i].keyX.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_X]);
+            controller[i].keyX.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_X]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:buttonY", i);
-            controller[i].keyY.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_Y]);
+            controller[i].keyY.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_Y]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:buttonZ", i);
-            controller[i].keyZ.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_Z]);
+            controller[i].keyZ.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_Z]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:start", i);
-            controller[i].keyStart.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_START]);
+            controller[i].keyStart.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_START]);
 
             sprintf_s(buffer, (int32)sizeof(buffer), "Keyboard Map %d:select", i);
-            controller[i].keySelect.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][KEY_SELECT]);
+            controller[i].keySelect.keyMap = iniparser_getint(ini, buffer, defaultKeyMaps[i][RSDK_KEY_SELECT]);
         }
+#endif
 
         gamePadCount = 0;
         while (true) {
             char buffer[0x30];
-            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:name", CONT_P1 + gamePadCount);
+            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:name", gamePadCount + 1);
             if (strcmp(iniparser_getstring(ini, buffer, ";unknown;"), ";unknown;") != 0) {
                 gamePadCount++;
             }
@@ -418,30 +420,26 @@ void RSDK::LoadSettingsINI()
             }
         }
 
-#if !RETRO_USE_ORIGINAL_CODE
-        // using standard allocation here due to mod loader trickery
-        gamePadMappings = new GamePadMappings[gamePadCount];
-#else
         AllocateStorage((void **)&gamePadMappings, sizeof(GamePadMappings) * gamePadCount, DATASET_STG, true);
-#endif
 
-        for (int32 i = 0; i < gamePadCount; ++i) {
+#if RETRO_PLATFORM != RETRO_3DS
+        for (int32 i = CONT_P1; i <= gamePadCount; ++i) {
             char buffer[0x30];
             char mappings[0x100];
 
-            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:name", CONT_P1 + i);
+            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:name", i);
             sprintf_s(gamePadMappings[i].name, (int32)sizeof(gamePadMappings[i].name), "%s", iniparser_getstring(ini, buffer, 0));
 
-            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:type", CONT_P1 + i);
+            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:type", i);
             gamePadMappings[i].type = iniparser_getint(ini, buffer, 0);
 
-            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:vendorID", CONT_P1 + i);
+            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:vendorID", i);
             gamePadMappings[i].vendorID = iniparser_getint(ini, buffer, 0);
 
-            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:productID", CONT_P1 + i);
+            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:productID", i);
             gamePadMappings[i].productID = iniparser_getint(ini, buffer, 0);
 
-            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:mappingTypes", CONT_P1 + i);
+            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:mappingTypes", i);
             sprintf_s(mappings, (int32)sizeof(mappings), "%s", iniparser_getstring(ini, buffer, 0));
 
             char *tok = strtok(mappings, ", ");
@@ -450,7 +448,7 @@ void RSDK::LoadSettingsINI()
                 tok                                       = strtok(0, " ,.-");
             }
 
-            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:offsets", CONT_P1 + i);
+            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:offsets", i);
             sprintf_s(mappings, (int32)sizeof(mappings), "%s", iniparser_getstring(ini, buffer, 0));
 
             tok = strtok(mappings, ", ");
@@ -459,13 +457,13 @@ void RSDK::LoadSettingsINI()
                 tok                                  = strtok(0, " ,.-");
             }
 
-            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:maskVals", CONT_P1 + i);
+            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:maskVals", i);
             sprintf_s(mappings, (int32)sizeof(mappings), "%s", iniparser_getstring(ini, buffer, 0));
             tok = strtok(mappings, ", ");
             for (int32 b = 0; tok; ++b) {
                 int32 mask = 1;
                 for (int32 m = 0; m < 18; ++m) {
-                    if (strcmp(buttonNames[m], tok) == 0) {
+                    if (strcmp(buttonNames[i], tok) == 0) {
                         gamePadMappings[i].buttons[b].maskVal = mask;
                         break;
                     }
@@ -475,6 +473,7 @@ void RSDK::LoadSettingsINI()
                 tok = strtok(0, " ,.-");
             }
         }
+#endif
 
         iniparser_freedict(ini);
     }
@@ -522,25 +521,29 @@ void RSDK::LoadSettingsINI()
 #endif
         }
 
+#if RETRO_PLATFORM == RETRO_3DS
+        engine.confirmFlip = true;
+#else
         engine.confirmFlip = customSettings.confirmButtonFlip;
+#endif
         engine.XYFlip      = customSettings.xyButtonFlip;
 #else
         sprintf_s(gameLogicName, (int32)sizeof(gameLogicName), "Game");
 #endif
 
         for (int32 i = CONT_P1; i <= PLAYER_COUNT; ++i) {
-            controller[i].keyUp.keyMap     = defaultKeyMaps[i][KEY_UP];
-            controller[i].keyDown.keyMap   = defaultKeyMaps[i][KEY_DOWN];
-            controller[i].keyLeft.keyMap   = defaultKeyMaps[i][KEY_LEFT];
-            controller[i].keyRight.keyMap  = defaultKeyMaps[i][KEY_RIGHT];
-            controller[i].keyA.keyMap      = defaultKeyMaps[i][KEY_A];
-            controller[i].keyB.keyMap      = defaultKeyMaps[i][KEY_B];
-            controller[i].keyC.keyMap      = defaultKeyMaps[i][KEY_C];
-            controller[i].keyX.keyMap      = defaultKeyMaps[i][KEY_X];
-            controller[i].keyY.keyMap      = defaultKeyMaps[i][KEY_Y];
-            controller[i].keyZ.keyMap      = defaultKeyMaps[i][KEY_Z];
-            controller[i].keyStart.keyMap  = defaultKeyMaps[i][KEY_START];
-            controller[i].keySelect.keyMap = defaultKeyMaps[i][KEY_SELECT];
+            controller[i].keyUp.keyMap     = defaultKeyMaps[i][RSDK_KEY_UP];
+            controller[i].keyDown.keyMap   = defaultKeyMaps[i][RSDK_KEY_DOWN];
+            controller[i].keyLeft.keyMap   = defaultKeyMaps[i][RSDK_KEY_LEFT];
+            controller[i].keyRight.keyMap  = defaultKeyMaps[i][RSDK_KEY_RIGHT];
+            controller[i].keyA.keyMap      = defaultKeyMaps[i][RSDK_KEY_A];
+            controller[i].keyB.keyMap      = defaultKeyMaps[i][RSDK_KEY_B];
+            controller[i].keyC.keyMap      = defaultKeyMaps[i][RSDK_KEY_C];
+            controller[i].keyX.keyMap      = defaultKeyMaps[i][RSDK_KEY_X];
+            controller[i].keyY.keyMap      = defaultKeyMaps[i][RSDK_KEY_Y];
+            controller[i].keyZ.keyMap      = defaultKeyMaps[i][RSDK_KEY_Z];
+            controller[i].keyStart.keyMap  = defaultKeyMaps[i][RSDK_KEY_START];
+            controller[i].keySelect.keyMap = defaultKeyMaps[i][RSDK_KEY_SELECT];
         }
 
         SaveSettingsINI(true);
@@ -550,13 +553,6 @@ void RSDK::LoadSettingsINI()
 
 void RSDK::SaveSettingsINI(bool32 writeToFile)
 {
-#if !RETRO_USE_ORIGINAL_CODE
-    if (gamePadCount && gamePadMappings)
-        free(gamePadMappings);
-    gamePadMappings = NULL;
-    gamePadCount    = 0;
-#endif
-
     // only done on windows and "dev", consoles use "options.bin"
 #if RETRO_REV02
     if (SKU::curSKU.platform != PLATFORM_PC && SKU::curSKU.platform != PLATFORM_DEV)
@@ -594,9 +590,8 @@ void RSDK::SaveSettingsINI(bool32 writeToFile)
             if (strcmp(iniparser_getstring(ini, "Game:gameLogic", ";unknown;"), ";unknown;") != 0)
                 WriteText(file, "gameLogic=%s\n", iniparser_getstring(ini, "Game:gameLogic", "Game"));
 
-            WriteText(file, "faceButtonFlip=%s\n", (customSettings.confirmButtonFlip ? "y" : "n"));
-            // WriteText(file, "confirmButtonFlip=%s\n", (customSettings.confirmButtonFlip ? "y" : "n"));
-            // WriteText(file, "xyButtonFlip=%s\n", (customSettings.xyButtonFlip ? "y" : "n"));
+            WriteText(file, "confirmButtonFlip=%s\n", (customSettings.confirmButtonFlip ? "y" : "n"));
+            WriteText(file, "xyButtonFlip=%s\n", (customSettings.xyButtonFlip ? "y" : "n"));
 
             WriteText(file, "enableControllerDebugging=%s\n", (customSettings.enableControllerDebugging ? "y" : "n"));
 

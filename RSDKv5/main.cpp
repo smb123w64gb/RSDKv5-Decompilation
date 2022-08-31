@@ -88,6 +88,10 @@ int32 RSDK_main(int32 argc, char **argv, void *linkLogicPtr)
     // initNxLink();
 #endif
 
+#if RETRO_PLATFORM == RETRO_3DS
+  osSetSpeedupEnable(true);
+#endif
+
     RSDK::linkGameLogic = (RSDK::LogicLinkHandle)linkLogicPtr;
 
     int32 exitCode = RSDK::RunRetroEngine(argc, argv);
