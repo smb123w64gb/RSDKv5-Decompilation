@@ -252,44 +252,17 @@ void RSDK::ScanModFolder(ModInfo *info)
 
     if (fs::exists(dataPath) && fs::is_directory(dataPath)) {
         try {
-            auto data_rdi = fs::recursive_directory_iterator(dataPath, fs::directory_options::follow_directory_symlink);
-            for (auto data_de : data_rdi) {
-                if (data_de.is_regular_file()) {
-                    char modBuf[0x100];
-                    strcpy(modBuf, data_de.path().string().c_str());
-                    char folderTest[12][0x10] = { "Data/",     "Data\\",     "data/",     "data\\",
-
-                                                  "Bytecode/", "Bytecode\\", "bytecode/", "bytecode\\",
-
-                                                  "Videos/",   "Videos\\",   "videos/",   "videos\\" };
-                    int32 tokenPos            = -1;
-                    for (int32 i = 0; i < 12; ++i) {
-                        tokenPos = (int32)std::string(modBuf).find(folderTest[i], 0);
-                        if (tokenPos >= 0)
-                            break;
-                    }
-
-                    if (tokenPos >= 0) {
-                        char buffer[0x80];
-                        for (int32 i = (int32)strlen(modBuf); i >= tokenPos; --i) {
-                            buffer[i - tokenPos] = modBuf[i] == '\\' ? '/' : modBuf[i];
-                        }
-
-                        // PrintLog(modBuf);
-                        std::string path(buffer);
-                        std::string modPath(modBuf);
-                        char pathLower[0x100];
-                        memset(pathLower, 0, sizeof(char) * 0x100);
-                        for (int32 c = 0; c < path.size(); ++c) {
-                            pathLower[c] = tolower(path.c_str()[c]);
-                        }
-
-                        info->fileMap.insert(std::pair<std::string, std::string>(pathLower, modBuf));
-                    }
+            auto dirIterator = fs::recursive_directory_iterator(dataPath, fs::directory_options::follow_directory_symlink);
+            for (auto dirFile : dirIterator) {
+                if (dirFile.is_regular_file()) {
+                    std::string folderPath = dirFile.path().string().substr(dataPath.string().length() + 1);
+                    std::transform(folderPath.begin(), folderPath.end(), folderPath.begin(),
+                                   [](unsigned char c) { return c == '\\' ? '/' : std::tolower(c); });
+                    info->fileMap.insert(std::pair<std::string, std::string>(folderPath, dirFile.path().string()));
                 }
             }
         } catch (fs::filesystem_error fe) {
-            PrintLog(PRINT_ERROR, "Data Folder Scanning Error: %s", fe.what());
+            PrintLog(PRINT_ERROR, "Mod File Scanning Error: %s", fe.what());
         }
     }
 }
@@ -501,7 +474,7 @@ bool32 RSDK::LoadMod(ModInfo *info, std::string modsPath, std::string folder, bo
 
         info->forceVersion = iniparser_getint(ini, ":ForceVersion", 0);
         if (!info->forceVersion) {
-            info->targetVersion = iniparser_getint(ini, ":TargetVersion", 0);
+            info->targetVersion = iniparser_getint(ini, ":TargetVersion", 5);
             if (info->targetVersion != -1 && ENGINE_VERSION) {
                 if (info->targetVersion < 3 || info->targetVersion > 5) {
                     PrintLog(PRINT_NORMAL, "[MOD] Invalid target version. Should be 3, 4, or 5");
@@ -626,11 +599,15 @@ bool32 RSDK::LoadMod(ModInfo *info, std::string modsPath, std::string folder, bo
             while (std::getline(stream, buf, ',')) {
                 buf        = trim(buf);
                 int32 mode = 0;
-                if (MODAPI_ENDS_WITH(".ini"))
-                    mode = 1;
-                else if (MODAPI_ENDS_WITH(".cfg"))
-                    mode = 2;
                 fs::path file;
+                if (MODAPI_ENDS_WITH(".ini")) {
+                    file = fs::path(modDir + "/" + buf + ".ini");
+                    mode = 1;
+                }
+                else if (MODAPI_ENDS_WITH(".cfg")) {
+                    file = fs::path(modDir + "/" + buf + ".cfg");
+                    mode = 2;
+                }
 
                 if (!mode) {
                     file = fs::path(modDir + "/" + buf + ".ini");
@@ -646,11 +623,11 @@ bool32 RSDK::LoadMod(ModInfo *info, std::string modsPath, std::string folder, bo
                 // if fail just free do nothing
                 if (!mode)
                     continue;
-                saveCfg = true;
 
                 if (mode == 1) {
                     FileIO *set = fOpen(file.string().c_str(), "r");
                     if (set) {
+                        saveCfg = true;
                         fClose(set);
                         using namespace std;
                         auto ini  = iniparser_load(file.string().c_str());

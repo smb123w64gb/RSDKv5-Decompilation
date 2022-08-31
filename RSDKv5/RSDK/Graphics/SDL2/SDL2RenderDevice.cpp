@@ -475,6 +475,9 @@ bool RenderDevice::InitGraphicsAPI()
     SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
     int32 maxPixHeight = 0;
+#if !RETRO_USE_ORIGINAL_CODE
+    int32 screenWidth = 0;
+#endif
     for (int32 s = 0; s < 4; ++s) {
         if (videoSettings.pixHeight > maxPixHeight)
             maxPixHeight = videoSettings.pixHeight;
@@ -482,7 +485,11 @@ bool RenderDevice::InitGraphicsAPI()
         screens[s].size.y = videoSettings.pixHeight;
 
         float viewAspect  = viewSize.x / viewSize.y;
+#if !RETRO_USE_ORIGINAL_CODE
+        screenWidth = (int32)((viewAspect * videoSettings.pixHeight) + 3) & 0xFFFFFFFC;
+#else
         int32 screenWidth = (int32)((viewAspect * videoSettings.pixHeight) + 3) & 0xFFFFFFFC;
+#endif
         if (screenWidth < videoSettings.pixWidth)
             screenWidth = videoSettings.pixWidth;
 
@@ -504,7 +511,11 @@ bool RenderDevice::InitGraphicsAPI()
     SDL_RenderSetLogicalSize(renderer, videoSettings.pixWidth, SCREEN_YSIZE);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
+#if !RETRO_USE_ORIGINAL_CODE
+    if (screenWidth <= 512 && maxPixHeight <= 256) {
+#else
     if (maxPixHeight <= 256) {
+#endif
         textureSize.x = 512.0;
         textureSize.y = 256.0;
     }
@@ -634,7 +645,7 @@ void RenderDevice::GetDisplays()
 
         int32 refreshRate = displayInfo.displays[newDisplayCount].refresh_rate;
         if (refreshRate >= 59 && (refreshRate <= 60 || refreshRate >= 120) && displayInfo.displays[newDisplayCount].height >= (SCREEN_YSIZE * 2)) {
-            if (d && refreshRate == 60 && displayInfo.displays[newDisplayCount - 1].refresh_rate == 59) {
+            if (newDisplayCount != 0 && refreshRate == 60 && displayInfo.displays[newDisplayCount - 1].refresh_rate == 59) {
                 memcpy(&displayInfo.displays[newDisplayCount - 1], &displayInfo.displays[newDisplayCount], sizeof(displayInfo.displays[0]));
                 --newDisplayCount;
             }
@@ -741,8 +752,7 @@ void RenderDevice::ProcessEvent(SDL_Event event)
             switch (event.button.button) {
                 case SDL_BUTTON_LEFT: touchInfo.down[0] = true; touchInfo.count = 1;
 #if !RETRO_REV02
-                    if (RSDK::SKU::buttonDownCount > 0)
-                        RSDK::SKU::buttonDownCount--;
+                    RSDK::SKU::buttonDownCount++;
 #endif
                     break;
 
@@ -759,8 +769,7 @@ void RenderDevice::ProcessEvent(SDL_Event event)
             switch (event.button.button) {
                 case SDL_BUTTON_LEFT: touchInfo.down[0] = false; touchInfo.count = 0;
 #if !RETRO_REV02
-                    if (RSDK::SKU::buttonDownCount > 0)
-                        RSDK::SKU::buttonDownCount--;
+                    RSDK::SKU::buttonDownCount--;
 #endif
                     break;
 
@@ -943,8 +952,15 @@ void RenderDevice::ProcessEvent(SDL_Event event)
                     break;
 
 #if !RETRO_REV02 && RETRO_INPUTDEVICE_KEYBOARD
-                case SDL_SCANCODE_ESCAPE: RSDK::SKU::specialKeyStates[0] = false; break;
-                case SDL_SCANCODE_RETURN: RSDK::SKU::specialKeyStates[1] = false; break;
+                case SDL_SCANCODE_ESCAPE:
+                    RSDK::SKU::specialKeyStates[0] = false;
+                    SKU::ClearKeyState(event.key.keysym.scancode);
+                    break;
+
+                case SDL_SCANCODE_RETURN:
+                    RSDK::SKU::specialKeyStates[1] = false;
+                    SKU::ClearKeyState(event.key.keysym.scancode);
+                    break;
 #endif
                 case SDL_SCANCODE_BACKSPACE: engine.gameSpeed = 1; break;
             }

@@ -4,7 +4,9 @@
 #include "Legacy/AudioLegacy.cpp"
 #endif
 
+#define STB_VORBIS_NO_PUSHDATA_API
 #define STB_VORBIS_NO_STDIO
+#define STB_VORBIS_NO_INTEGER_CONVERSION
 #include "stb_vorbis/stb_vorbis.c"
 
 stb_vorbis *vorbisInfo = NULL;
@@ -186,16 +188,20 @@ void RSDK::ReadSfx(char *filename, uint8 id, uint8 plays, uint8 scope, uint32 *s
             ReadInt32(&info, false); // chunk size
             ReadInt32(&info, false); // WAVE
             ReadInt32(&info, false); // FMT
-            ReadInt32(&info, false); // chunk size
+            int32 sizeing = ReadInt32(&info, false); // chunk size
             ReadInt16(&info);        // audio format
             *channels = ReadInt16(&info);
             *freq     = ReadInt32(&info, false);
             ReadInt32(&info, false); // bytes per sec
             ReadInt16(&info);        // block align
             *format = ReadInt16(&info);
-            Seek_Set(&info, 34);
 
+            Seek_Set(&info, 34);
             uint16 sampleBits = ReadInt16(&info);
+
+            // Original code added to help fix some issues
+            Seek_Set(&info, 20 + sizeing);
+
             int32 loop        = 0;
             while (true) {
                 signature = ReadInt32(&info, false);
@@ -227,7 +233,7 @@ void RSDK::ReadSfx(char *filename, uint8 id, uint8 plays, uint8 scope, uint32 *s
             if (sampleBits == 8) {
                 for (int32 s = 0; s < length; ++s) {
                     int32 sample = ReadInt8(&info);
-                    *buffer++    = (sample - 128) * 0.0078125;
+                    *buffer++    = (sample - 128) * 0.0078125; // 0.0078125 == 128.0
                 }
             }
             else {
@@ -235,7 +241,7 @@ void RSDK::ReadSfx(char *filename, uint8 id, uint8 plays, uint8 scope, uint32 *s
                     int32 sample = ReadInt16(&info);
                     if (sample > 0x7FFF)
                         sample = (sample & 0x7FFF) - 0x8000;
-                    *buffer++ = (sample * 0.000030518) * 0.75;
+                    *buffer++ = (sample * 0.000030518) * 0.75; // 0.000030518 == 32,767.5 
                 }
             }
         }

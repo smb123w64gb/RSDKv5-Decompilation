@@ -1,4 +1,4 @@
-#define _GLVERSION "#version 130\n"
+#define _GLVERSION "#version 130\n#define in_V in\n#define in_F in\n"
 
 #if RETRO_REV02
 #define _GLDEFINE "#define RETRO_REV02 (1)\n"
@@ -7,9 +7,9 @@
 #endif
 
 const GLchar *backupVertex = R"aa(
-in vec3 in_pos;
-in vec4 in_color;
-in vec2 in_UV;
+in_V vec3 in_pos;
+in_V vec4 in_color;
+in_V vec2 in_UV;
 out vec4 ex_color;
 out vec2 ex_UV;
 
@@ -22,15 +22,14 @@ void main()
 )aa";
 
 const GLchar *backupFragment = R"aa(
-in vec2 ex_UV;
-in vec4 ex_color;
-out vec4 out_color;
+in_F vec2 ex_UV;
+in_F vec4 ex_color;
 
 uniform sampler2D texDiffuse;
 
 void main()
 {
-    out_color = texture(texDiffuse, ex_UV);
+    gl_FragColor = texture(texDiffuse, ex_UV);
 }
 )aa";
 
@@ -218,6 +217,9 @@ bool RenderDevice::InitGraphicsAPI()
     }
 
     int32 maxPixHeight = 0;
+#if !RETRO_USE_ORIGINAL_CODE
+    int32 screenWidth = 0;
+#endif
     for (int32 s = 0; s < SCREEN_COUNT; ++s) {
         if (videoSettings.pixHeight > maxPixHeight)
             maxPixHeight = videoSettings.pixHeight;
@@ -225,7 +227,11 @@ bool RenderDevice::InitGraphicsAPI()
         screens[s].size.y = videoSettings.pixHeight;
 
         float viewAspect  = viewSize.x / viewSize.y;
+#if !RETRO_USE_ORIGINAL_CODE
+        screenWidth = (int32)((viewAspect * videoSettings.pixHeight) + 3) & 0xFFFFFFFC;
+#else
         int32 screenWidth = (int32)((viewAspect * videoSettings.pixHeight) + 3) & 0xFFFFFFFC;
+#endif
         if (screenWidth < videoSettings.pixWidth)
             screenWidth = videoSettings.pixWidth;
 
@@ -264,7 +270,11 @@ bool RenderDevice::InitGraphicsAPI()
         viewportSize.x = (pixAspect * viewSize.y);
     }
 
+#if !RETRO_USE_ORIGINAL_CODE
+    if (screenWidth <= 512 && maxPixHeight <= 256) {
+#else
     if (maxPixHeight <= 256) {
+#endif
         textureSize.x = 512.0;
         textureSize.y = 256.0;
     }
@@ -983,9 +993,17 @@ void RenderDevice::ProcessKeyEvent(GLFWwindow *, int32 key, int32 scancode, int3
                     SKU::ClearKeyState(key);
 #endif
                     break;
+
 #if !RETRO_REV02 && RETRO_INPUTDEVICE_KEYBOARD
-                case GLFW_KEY_ESCAPE: RSDK::SKU::specialKeyStates[0] = false; break;
-                case GLFW_KEY_ENTER: RSDK::SKU::specialKeyStates[1] = false; break;
+                case GLFW_KEY_ESCAPE:
+                    RSDK::SKU::specialKeyStates[0] = false;
+                    SKU::ClearKeyState(key);
+                    break;
+
+                case GLFW_KEY_ENTER:
+                    RSDK::SKU::specialKeyStates[1] = false;
+                    SKU::ClearKeyState(key);
+                    break;
 #endif
                 case GLFW_KEY_BACKSPACE: engine.gameSpeed = 1; break;
             }
@@ -1013,8 +1031,7 @@ void RenderDevice::ProcessMouseEvent(GLFWwindow *, int32 button, int32 action, i
             switch (button) {
                 case GLFW_MOUSE_BUTTON_LEFT: touchInfo.down[0] = true; touchInfo.count = 1;
 #if !RETRO_REV02
-                    if (RSDK::SKU::buttonDownCount > 0)
-                        RSDK::SKU::buttonDownCount--;
+                    RSDK::SKU::buttonDownCount++;
 #endif
                     break;
 
@@ -1032,8 +1049,7 @@ void RenderDevice::ProcessMouseEvent(GLFWwindow *, int32 button, int32 action, i
             switch (button) {
                 case GLFW_MOUSE_BUTTON_LEFT: touchInfo.down[0] = false; touchInfo.count = 0;
 #if !RETRO_REV02
-                    if (RSDK::SKU::buttonDownCount > 0)
-                        RSDK::SKU::buttonDownCount--;
+                    RSDK::SKU::buttonDownCount--;
 #endif
                     break;
 

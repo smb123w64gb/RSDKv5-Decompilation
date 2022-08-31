@@ -457,15 +457,8 @@ enum GameRegions {
 
 #if RETRO_PLATFORM == RETRO_OSX
 
-#if RETRO_RENDERDEVICE_SDL2 || RETRO_AUDIODEVICE_SDL2 || RETRO_INPUTDEVICE_SDL2
-#include <SDL2/SDL.h>
-#endif
-
-#include <theora/theoradec.h>
-
 #include "cocoaHelpers.hpp"
 #elif RETRO_PLATFORM == RETRO_iOS
-#include <SDL2/SDL.h>
 
 #include "cocoaHelpers.hpp"
 #elif RETRO_PLATFORM == RETRO_LINUX || RETRO_PLATFORM == RETRO_SWITCH
@@ -478,12 +471,6 @@ enum GameRegions {
 #include <EGL/egl.h> // EGL library
 #include <EGL/eglext.h> // EGL extensions
 #endif
-
-#if RETRO_RENDERDEVICE_SDL2 || RETRO_INPUTDEVICE_SDL2 || RETRO_AUDIODEVICE_SDL2
-#include <SDL2/SDL.h>
-#endif // ! RETRO_RENDERDEVICE_SDL2
-
-#include <theora/theoradec.h>
 
 #if RETRO_PLATFORM == RETRO_SWITCH
 #define PrintConsole _PrintConsole
@@ -499,7 +486,6 @@ enum GameRegions {
 #endif
 
 #include <androidHelpers.hpp>
-#include <theora/theoradec.h>
 
 #undef RETRO_USING_MOUSE
 #elif RETRO_PLATFORM == RETRO_3DS
@@ -508,6 +494,14 @@ enum GameRegions {
 #undef PrintConsole
 
 #endif
+
+#if RETRO_RENDERDEVICE_SDL2 || RETRO_INPUTDEVICE_SDL2 || RETRO_AUDIODEVICE_SDL2
+// This is the way of including SDL that is recommended by the devs themselves:
+// https://wiki.libsdl.org/FAQDevelopment#do_i_include_sdl.h_or_sdlsdl.h
+#include "SDL.h"
+#endif
+
+#include <theora/theoradec.h>
 
 // ============================
 // ENGINE INCLUDES
@@ -572,6 +566,9 @@ struct RetroEngine {
 
     uint8 focusState = 0;
     uint8 inFocus    = 0;
+#if !RETRO_USE_ORIGINAL_CODE
+    uint8 focusPausedChannel[CHANNEL_COUNT];
+#endif
 
     bool32 initialized = false;
     bool32 hardPause   = false;
@@ -631,15 +628,6 @@ void InitEngine();
 void StartGameObjects();
 
 #if RETRO_USE_MOD_LOADER
-const void *FirstXMLChildElement(void *doc, const void *elementPtr, const char *name);
-const void *NextXMLSiblingElement(void *doc, const void *elementPtr, const char *name);
-
-const void *FindXMLAttribute(const void *elementPtr, const char *name);
-const char *GetXMLAttributeName(const void *attributePtr);
-int32 GetXMLAttributeValueInt(const void *attributePtr);
-bool32 GetXMLAttributeValueBool(const void *attributePtr);
-const char *GetXMLAttributeValueString(const void *attributePtr);
-
 void LoadXMLObjects();
 void LoadXMLSoundFX();
 int32 LoadXMLStages(int32 mode, int32 gcListCount, int32 gcStageCount);
