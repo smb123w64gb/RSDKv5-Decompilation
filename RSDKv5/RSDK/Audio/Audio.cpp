@@ -87,7 +87,7 @@ void RSDK::LoadStream(ChannelInfo *channel)
         if (!vorbisInfo->alloc.alloc_buffer)
             free(vorbisInfo);
     }
-
+    /*
     FileInfo info;
     InitFileInfo(&info);
 
@@ -112,7 +112,7 @@ void RSDK::LoadStream(ChannelInfo *channel)
             }
         }
     }
-
+    */
     if (channel->state == CHANNEL_LOADING_STREAM)
         channel->state = CHANNEL_IDLE;
 }
@@ -176,7 +176,7 @@ int32 RSDK::PlayStream(const char *filename, uint32 slot, int32 startPos, uint32
 
 void RSDK::ReadSfx(char *filename, uint8 id, uint8 plays, uint8 scope, uint32 *size, uint32 *format, uint16 *channels, uint32 *freq)
 {
-    FileInfo info;
+    /*FileInfo info;
     InitFileInfo(&info);
 
     if (LoadFile(&info, filename, FMODE_RB)) {
@@ -244,7 +244,7 @@ void RSDK::ReadSfx(char *filename, uint8 id, uint8 plays, uint8 scope, uint32 *s
     }
     else {
         PrintLog(PRINT_ERROR, "Unable to open sfx: %s", filename);
-    }
+    }*/
 }
 
 void RSDK::LoadSfx(char *filename, uint8 plays, uint8 scope)
