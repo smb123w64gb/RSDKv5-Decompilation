@@ -316,7 +316,11 @@ void RSDK::LoadSettingsINI()
         customSettings.region                    = iniparser_getint(ini, "Game:region", -1);
         // customSettings.confirmButtonFlip         = iniparser_getboolean(ini, "Game:confirmButtonFlip", false);
         // customSettings.xyButtonFlip              = iniparser_getboolean(ini, "Game:xyButtonFlip", false);
+#if RETRO_PLATFORM == RETRO_3DS
+        customSettings.confirmButtonFlip = true;
+#else
         customSettings.confirmButtonFlip         = iniparser_getboolean(ini, "Game:faceButtonFlip", false);
+#endif
         customSettings.xyButtonFlip              = customSettings.confirmButtonFlip;
         customSettings.enableControllerDebugging = iniparser_getboolean(ini, "Game:enableControllerDebugging", false);
         customSettings.disableFocusPause         = iniparser_getboolean(ini, "Game:disableFocusPause", false);
@@ -336,7 +340,11 @@ void RSDK::LoadSettingsINI()
 #endif
         }
 
+#if RETRO_PLATFORM == RETRO_3DS
+        engine.confirmFlip = true;
+#else
         engine.confirmFlip = customSettings.confirmButtonFlip;
+#endif
         engine.XYFlip      = customSettings.xyButtonFlip;
 #else
         sprintf_s(gameLogicName, (int32)sizeof(gameLogicName), "Game");
