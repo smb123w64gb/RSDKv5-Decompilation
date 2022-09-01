@@ -17,7 +17,7 @@ namespace RSDK
       static void HandleStreamLoad(ChannelInfo* channel, bool32 async);
 
     private:
-      static void InitAudioChannels() { };
+      static void InitAudioChannels();
       static void InitMixBuffer() { };
   };
 
