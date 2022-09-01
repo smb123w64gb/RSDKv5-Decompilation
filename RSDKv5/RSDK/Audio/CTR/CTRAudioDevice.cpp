@@ -41,12 +41,12 @@ inline s32 GetThreadPriority() {
 }
 
 // 3DS samples are SIGNED
-inline u16 convertSample(float f) {
+inline s16 convertSample(float f) {
   float fOut = (f * 32768);
-  u16 out;
+  s16 out;
   if (fOut < -32768) out = -32768;
   else if (fOut > 32767) out = 32767;
-  else out = (u16) fOut;
+  else out = (s16) fOut;
   return out;
 }
 
@@ -122,10 +122,10 @@ void AudioDevice::Release()
 void AudioDevice::ProcessAudioMixing(void* stream, int32 length)
 {
   // taken from SDL2 backend
-  u16 *streamF    = (u16*)stream;
-  u16 *streamEndF = ((u16*)stream) + length;
+  s16 *streamF    = (s16*)stream;
+  s16 *streamEndF = ((s16*)stream) + length;
 
-  memset(stream, 0, length * sizeof(u16));
+  memset(stream, 0, length * sizeof(s16));
 
   for (int32 c = 0; c < CHANNEL_COUNT; ++c) {
       ChannelInfo *channel = &channels[c];
@@ -154,7 +154,7 @@ void AudioDevice::ProcessAudioMixing(void* stream, int32 length)
               float panR = volR * engine.soundFXVolume;
 
               uint32 speedPercent       = 0;
-              u16 *curStreamF           = streamF;
+              s16 *curStreamF           = streamF;
               while (curStreamF < streamEndF && streamF < streamEndF) {
                   SAMPLE_FORMAT sample = (sfxBuffer[1] - *sfxBuffer) * speedMixAmounts[speedPercent >> 6] + *sfxBuffer;
 
@@ -205,7 +205,7 @@ void AudioDevice::ProcessAudioMixing(void* stream, int32 length)
               float panR = volR * engine.streamVolume;
 
               uint32 speedPercent       = 0;
-              u16 *curStreamF           = streamF;
+              s16 *curStreamF           = streamF;
               while (curStreamF < streamEndF && streamF < streamEndF) {
                   speedPercent += channel->speed;
                   int32 next = FROM_FIXED(speedPercent);
