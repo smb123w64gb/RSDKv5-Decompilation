@@ -40,11 +40,12 @@ inline s32 GetThreadPriority() {
   return prio;
 }
 
+// 3DS samples are SIGNED
 inline u16 convertSample(float f) {
-  float fOut = (f * 65535);
+  float fOut = (f * 32768);
   u16 out;
-  if (fOut < 0) out = 0;
-  else if (fOut > 65535) out = 65535;
+  if (fOut < -32768) out = -32768;
+  else if (fOut > 32767) out = 32767;
   else out = (u16) fOut;
   return out;
 }
@@ -104,6 +105,8 @@ void AudioDevice::Release()
 {
   // close thread
   threadRunning = false;
+  svcSignalEvent(audioThreadRequest);
+
   threadJoin(audioThreadHandle, UINT64_MAX);
   threadFree(audioThreadHandle);
 
@@ -122,7 +125,7 @@ void AudioDevice::ProcessAudioMixing(void* stream, int32 length)
   u16 *streamF    = (u16*)stream;
   u16 *streamEndF = ((u16*)stream) + length;
 
-  memset(stream, 0, length * sizeof(SAMPLE_FORMAT));
+  memset(stream, 0, length * sizeof(u16));
 
   for (int32 c = 0; c < CHANNEL_COUNT; ++c) {
       ChannelInfo *channel = &channels[c];
@@ -268,19 +271,17 @@ void AudioThread(void* arg) {
 
   while (threadRunning) {
     for (size_t i = 0; i < WAVEBUF_COUNT; i++) {
-      svcWaitSynchronization(audioThreadRequest, UINT64_MAX);
-      svcClearEvent(audioThreadRequest);
-
       if (wbuf[i].status != NDSP_WBUF_DONE)
         continue;
 
       AudioDevice::ProcessAudioMixing(wbuf[i].data_pcm16, 
-                                      WAVEBUF_SIZE);
+                                      SAMPLES_PER_BUF * CHANNELS_PER_SAMPLE);
       wbuf[i].nsamples = SAMPLES_PER_BUF;
       ndspChnWaveBufAdd(0, &wbuf[i]);
-      DSP_FlushDataCache(wbuf[i].data_pcm16,
-                          SAMPLES_PER_BUF * CHANNELS_PER_SAMPLE * 
-                          sizeof(int16_t));
+      DSP_FlushDataCache(wbuf[i].data_pcm16, WAVEBUF_SIZE);
     }
+
+    svcWaitSynchronization(audioThreadRequest, UINT64_MAX);
+    svcClearEvent(audioThreadRequest);
   }
 }
