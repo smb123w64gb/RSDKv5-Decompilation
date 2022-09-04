@@ -142,7 +142,12 @@ void RSDK::InitInputDevices()
 #endif
 }
 
-void RSDK::ReleaseInputDevices() {}
+void RSDK::ReleaseInputDevices()
+{
+#if RETRO_INPUTDEVICE_SDL2
+    SKU::ReleaseSDL2InputAPI();
+#endif
+}
 
 void RSDK::ClearInput()
 {

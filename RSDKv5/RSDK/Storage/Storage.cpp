@@ -61,8 +61,9 @@ void RSDK::AllocateStorage(void **dataPtr, uint32 size, StorageDataSets dataSet,
     if ((uint32)dataSet < DATASET_MAX && size > 0) {
         DataStorage *storage = &dataStorage[dataSet];
 
-        if ((size & -4) < size)
-            size = (size & -4) + sizeof(int32);
+        int32 aligned = size & -(int32)sizeof(void *);
+        if (aligned < size)
+            size = aligned + sizeof(void *);
 
         if (storage->entryCount < STORAGE_ENTRY_COUNT) {
             if (size + sizeof(int32) * storage->usedStorage >= storage->storageLimit) {
