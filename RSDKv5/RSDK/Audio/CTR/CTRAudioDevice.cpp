@@ -42,12 +42,8 @@ inline s32 GetThreadPriority() {
 
 // 3DS samples are SIGNED
 inline s16 convertSample(float f) {
-  float fOut = (f * 32768);
-  s16 out;
-  if (fOut < -32768) out = -32768;
-  else if (fOut > 32767) out = 32767;
-  else out = (s16) fOut;
-  return out;
+  float fOut = (f * 32768) * 0.75;
+  return (s16) fOut;
 }
 
 bool32 AudioDevice::Init()
