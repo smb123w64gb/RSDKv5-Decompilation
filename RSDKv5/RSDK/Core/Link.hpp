@@ -425,11 +425,9 @@ public:
 #endif
 #endif
 
-    static inline Handle Open(std::string path)
-    {
-        // BE WARNED: this is ifdef hell
-        // still better than the mess we had before
+
 #if RETRO_PLATFORM == RETRO_SWITCH || RETRO_PLATFORM == RETRO_3DS
+    // do nothing for switch
     static inline Handle Open(std::string path) { return NULL; }
 #else
     static inline Handle PlatformLoadLibrary(std::string path)
