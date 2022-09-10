@@ -142,6 +142,13 @@ void RSDK::InitInputDevices()
 #endif
 }
 
+void RSDK::ReleaseInputDevices()
+{
+#if RETRO_INPUTDEVICE_SDL2
+    SKU::ReleaseSDL2InputAPI();
+#endif
+}
+
 void RSDK::ClearInput()
 {
     for (int32 i = 0; i <= PLAYER_COUNT; ++i) {

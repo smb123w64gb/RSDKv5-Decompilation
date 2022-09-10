@@ -117,7 +117,7 @@ void RSDK::SKU::InitUserCore()
     RegisterAchievement("ACH_FBZ", "Window Shopping", "Let the wind take you through");
     RegisterAchievement("ACH_PGZ", "Crate Expectations", "Wreak havoc at the propaganda factory");
     RegisterAchievement("ACH_SSZ", "King of Speed", "Get through Stardust Speedway Zone as quickly as possible");
-    RegisterAchievement("ACH_HCZ", "Boat Enthusiast", "Try pushing a barrel to see how far it goes");
+    RegisterAchievement("ACH_HCZ", "Boat Enthusiast", "We really like boats");
     RegisterAchievement("ACH_MSZ", "The Password is \"Special Stage\"", "Try pushing a barrel to see how far it goes");
     RegisterAchievement("ACH_OOZ", "Secret Sub", "You might have to submerge to find it");
     RegisterAchievement("ACH_LRZ", "Without a Trace", "Barrel through the lava, don't let anything stop you");
@@ -314,8 +314,14 @@ void RSDK::LoadSettingsINI()
 
 #if !RETRO_USE_ORIGINAL_CODE
         customSettings.region                    = iniparser_getint(ini, "Game:region", -1);
+        // customSettings.confirmButtonFlip         = iniparser_getboolean(ini, "Game:confirmButtonFlip", false);
+        // customSettings.xyButtonFlip              = iniparser_getboolean(ini, "Game:xyButtonFlip", false);
+#if RETRO_PLATFORM == RETRO_3DS
+        customSettings.confirmButtonFlip = true;
+#else
         customSettings.confirmButtonFlip         = iniparser_getboolean(ini, "Game:faceButtonFlip", false);
-        customSettings.xyButtonFlip              = iniparser_getboolean(ini, "Game:xyButtonFlip", customSettings.confirmButtonFlip);
+#endif
+        customSettings.xyButtonFlip              = customSettings.confirmButtonFlip;
         customSettings.enableControllerDebugging = iniparser_getboolean(ini, "Game:enableControllerDebugging", false);
         customSettings.disableFocusPause         = iniparser_getboolean(ini, "Game:disableFocusPause", false);
 
@@ -334,7 +340,11 @@ void RSDK::LoadSettingsINI()
 #endif
         }
 
+#if RETRO_PLATFORM == RETRO_3DS
+        engine.confirmFlip = true;
+#else
         engine.confirmFlip = customSettings.confirmButtonFlip;
+#endif
         engine.XYFlip      = customSettings.xyButtonFlip;
 #else
         sprintf_s(gameLogicName, (int32)sizeof(gameLogicName), "Game");
@@ -424,6 +434,7 @@ void RSDK::LoadSettingsINI()
 
 #if RETRO_PLATFORM != RETRO_3DS
         for (int32 i = CONT_P1; i <= gamePadCount; ++i) {
+        for (int32 i = 0; i < gamePadCount; ++i) {
             char buffer[0x30];
             char mappings[0x100];
 
@@ -721,4 +732,11 @@ void RSDK::SaveSettingsINI(bool32 writeToFile)
         iniparser_freedict(ini);
         fClose(file);
     }
+
+#if !RETRO_USE_ORIGINAL_CODE
+    if (gamePadCount && gamePadMappings)
+        delete[] gamePadMappings;
+    gamePadMappings = NULL;
+    gamePadCount    = 0;
+#endif
 }

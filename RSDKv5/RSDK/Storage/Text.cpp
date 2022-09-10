@@ -480,7 +480,8 @@ bool32 RSDK::SplitStringList(String *splitStrings, String *stringList, int32 sta
 
     bool32 hasSplitString = false;
     for (int32 curCharPos = 0; curCharPos < stringList->length && stringCount > 0; ++curCharPos) {
-        if (stringList->chars[curCharPos] == '\n') {
+        if (stringList->chars[curCharPos] == 0x0A0D ||
+            stringList->chars[curCharPos] == 0x0A) {
             if (curStringID < startStringID) {
                 lastCharPos = curCharPos;
             }

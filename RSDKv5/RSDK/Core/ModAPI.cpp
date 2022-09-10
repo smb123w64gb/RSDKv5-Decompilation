@@ -165,7 +165,8 @@ void RSDK::LoadModSettings()
     modSettings.forceScripts    = false;
 #endif
 
-    for (int32 i = (int32)ActiveMods().size() - 1; i >= 0; --i) {
+    int32 activeModCount = (int32)ActiveMods().size();
+    for (int32 i = activeModCount - 1; i >= 0; --i) {
         ModInfo *mod = &modList[i];
 
         if (mod->redirectSaveRAM) {
@@ -252,44 +253,17 @@ void RSDK::ScanModFolder(ModInfo *info)
 
     if (fs::exists(dataPath) && fs::is_directory(dataPath)) {
         try {
-            auto data_rdi = fs::recursive_directory_iterator(dataPath, fs::directory_options::follow_directory_symlink);
-            for (auto data_de : data_rdi) {
-                if (data_de.is_regular_file()) {
-                    char modBuf[0x100];
-                    strcpy(modBuf, data_de.path().string().c_str());
-                    char folderTest[12][0x10] = { "Data/",     "Data\\",     "data/",     "data\\",
-
-                                                  "Bytecode/", "Bytecode\\", "bytecode/", "bytecode\\",
-
-                                                  "Videos/",   "Videos\\",   "videos/",   "videos\\" };
-                    int32 tokenPos            = -1;
-                    for (int32 i = 0; i < 12; ++i) {
-                        tokenPos = (int32)std::string(modBuf).find(folderTest[i], 0);
-                        if (tokenPos >= 0)
-                            break;
-                    }
-
-                    if (tokenPos >= 0) {
-                        char buffer[0x80];
-                        for (int32 i = (int32)strlen(modBuf); i >= tokenPos; --i) {
-                            buffer[i - tokenPos] = modBuf[i] == '\\' ? '/' : modBuf[i];
-                        }
-
-                        // PrintLog(modBuf);
-                        std::string path(buffer);
-                        std::string modPath(modBuf);
-                        char pathLower[0x100];
-                        memset(pathLower, 0, sizeof(char) * 0x100);
-                        for (int32 c = 0; c < path.size(); ++c) {
-                            pathLower[c] = tolower(path.c_str()[c]);
-                        }
-
-                        info->fileMap.insert(std::pair<std::string, std::string>(pathLower, modBuf));
-                    }
+            auto dirIterator = fs::recursive_directory_iterator(dataPath, fs::directory_options::follow_directory_symlink);
+            for (auto dirFile : dirIterator) {
+                if (dirFile.is_regular_file()) {
+                    std::string folderPath = dirFile.path().string().substr(dataPath.string().length() + 1);
+                    std::transform(folderPath.begin(), folderPath.end(), folderPath.begin(),
+                                   [](unsigned char c) { return c == '\\' ? '/' : std::tolower(c); });
+                    info->fileMap.insert(std::pair<std::string, std::string>(folderPath, dirFile.path().string()));
                 }
             }
         } catch (fs::filesystem_error fe) {
-            PrintLog(PRINT_ERROR, "Data Folder Scanning Error: %s", fe.what());
+            PrintLog(PRINT_ERROR, "Mod File Scanning Error: %s", fe.what());
         }
     }
 }
@@ -501,7 +475,7 @@ bool32 RSDK::LoadMod(ModInfo *info, std::string modsPath, std::string folder, bo
 
         info->forceVersion = iniparser_getint(ini, ":ForceVersion", 0);
         if (!info->forceVersion) {
-            info->targetVersion = iniparser_getint(ini, ":TargetVersion", 0);
+            info->targetVersion = iniparser_getint(ini, ":TargetVersion", 5);
             if (info->targetVersion != -1 && ENGINE_VERSION) {
                 if (info->targetVersion < 3 || info->targetVersion > 5) {
                     PrintLog(PRINT_NORMAL, "[MOD] Invalid target version. Should be 3, 4, or 5");
@@ -858,9 +832,10 @@ void RSDK::AddPublicFunction(const char *functionName, void *functionPtr)
 void *RSDK::GetPublicFunction(const char *id, const char *functionName)
 {
     if (!id) {
-        for (auto &f : gamePublicFuncs)
+        for (auto &f : gamePublicFuncs) {
             if (f.name == functionName)
                 return f.ptr;
+        }
 
         return NULL;
     }
@@ -870,9 +845,10 @@ void *RSDK::GetPublicFunction(const char *id, const char *functionName)
 
     for (ModInfo &m : modList) {
         if (m.active && m.id == id) {
-            for (auto &f : m.functionList)
+            for (auto &f : m.functionList) {
                 if (f.name == functionName)
                     return f.ptr;
+            }
 
             return NULL;
         }
@@ -884,9 +860,10 @@ void *RSDK::GetPublicFunction(const char *id, const char *functionName)
 void RSDK::GetModPath(const char *id, String *result)
 {
     int32 m;
-    for (m = 0; m < modList.size(); ++m)
+    for (m = 0; m < modList.size(); ++m) {
         if (modList[m].active && modList[m].id == id)
             break;
+    }
 
     if (m == modList.size())
         return;
@@ -899,9 +876,10 @@ void RSDK::GetModPath(const char *id, String *result)
 std::string GetModPath_i(const char *id)
 {
     int32 m;
-    for (m = 0; m < modList.size(); ++m)
+    for (m = 0; m < modList.size(); ++m) {
         if (modList[m].active && modList[m].id == id)
             break;
+    }
 
     if (m == modList.size())
         return std::string();
@@ -1220,7 +1198,7 @@ void RSDK::SetSettingsString(const char *key, String *val)
 void RSDK::SaveSettings()
 {
     using namespace std;
-    if (!currentMod || !currentMod->settings.size())
+    if (!currentMod || !currentMod->settings.size() || !currentMod->active)
         return;
 
     FileIO *file = fOpen((GetModPath_i(currentMod->id.c_str()) + "/modSettings.ini").c_str(), "w");
