@@ -3,6 +3,9 @@
 #include <D3Dcompiler.h>
 #endif
 
+#include "Ks.h"      // used for KSCATEGORY_AUDIO
+#include "Ksmedia.h" // used for KSCATEGORY_AUDIO
+
 // for some reason this seems to be applying "thick frame" instead of thin frame (intended)
 // it is for this reason that I'm unable to get the cool mini window toolbar that og mania has :(
 // tldr: microsoft sucks again
@@ -608,7 +611,7 @@ bool RenderDevice::InitGraphicsAPI()
 
         screens[s].size.y = videoSettings.pixHeight;
 
-        float viewAspect  = viewSize.x / viewSize.y;
+        float viewAspect = viewSize.x / viewSize.y;
 #if !RETRO_USE_ORIGINAL_CODE
         screenWidth = (int32)((viewAspect * videoSettings.pixHeight) + 3) & 0xFFFFFFFC;
 #else
@@ -1187,7 +1190,16 @@ void RenderDevice::ProcessEvent(MSG Msg)
                             sceneInfo.listPos = sceneInfo.listCategory[sceneInfo.activeCategory].sceneOffsetEnd - 1;
                         }
 
+#if RETRO_REV0U
+                        switch (engine.version) {
+                            default: break;
+                            case 5: LoadScene(); break;
+                            case 4:
+                            case 3: RSDK::Legacy::stageMode = RSDK::Legacy::STAGEMODE_LOAD; break;
+                        }
+#else
                         LoadScene();
+#endif
 
                         handledMsg = true;
                     }
@@ -1204,7 +1216,16 @@ void RenderDevice::ProcessEvent(MSG Msg)
                             sceneInfo.listPos = sceneInfo.listCategory[sceneInfo.activeCategory].sceneOffsetStart;
                         }
 
+#if RETRO_REV0U
+                        switch (engine.version) {
+                            default: break;
+                            case 5: LoadScene(); break;
+                            case 4:
+                            case 3: RSDK::Legacy::stageMode = RSDK::Legacy::STAGEMODE_LOAD; break;
+                        }
+#else
                         LoadScene();
+#endif
 
                         handledMsg = true;
                     }
@@ -1223,7 +1244,17 @@ void RenderDevice::ProcessEvent(MSG Msg)
                 case VK_F5:
                     if (engine.devMenu) {
                         // Quick-Reload
+
+#if RETRO_REV0U
+                        switch (engine.version) {
+                            default: break;
+                            case 5: LoadScene(); break;
+                            case 4:
+                            case 3: RSDK::Legacy::stageMode = RSDK::Legacy::STAGEMODE_LOAD; break;
+                        }
+#else
                         LoadScene();
+#endif
 
                         handledMsg = true;
                     }
@@ -1390,12 +1421,13 @@ bool RenderDevice::ProcessEvents()
             return false;
     }
 
-    return true;
+    return isRunning;
 }
 
 LRESULT CALLBACK RenderDevice::WindowEventCallback(HWND hRecipient, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    GUID deviceGUID = { 1771351300, 37871, 4560, { 163, 204, 0, 160, 201, 34, 49, 150 } };
+    bool32 forceExit = false;
+    GUID deviceGUID  = KSCATEGORY_AUDIO;
 
     switch (message) {
         case WM_CREATE: {
@@ -1405,11 +1437,13 @@ LRESULT CALLBACK RenderDevice::WindowEventCallback(HWND hRecipient, UINT message
             DEV_BROADCAST_DEVICEINTERFACE filter;
             filter.dbcc_name[0]    = 0;
             filter.dbcc_reserved   = 0;
-            filter.dbcc_size       = 32;
+            filter.dbcc_size       = sizeof(DEV_BROADCAST_DEVICEINTERFACE);
             filter.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
             filter.dbcc_classguid  = deviceGUID;
 
             deviceNotif = RegisterDeviceNotification(hRecipient, &filter, DEVICE_NOTIFY_WINDOW_HANDLE);
+
+            forceExit = true;
             break;
         }
 
@@ -1419,11 +1453,13 @@ LRESULT CALLBACK RenderDevice::WindowEventCallback(HWND hRecipient, UINT message
                 deviceNotif = 0;
             }
 
+            PrintLog(PRINT_NORMAL, "Quit event!!!");
             isRunning = false;
+            forceExit = true;
             break;
 
         case WM_MOVE:
-        case WM_SIZE: break;
+        case WM_SIZE: forceExit = true; break;
 
         case WM_ACTIVATE:
             if (wParam) {
@@ -1457,11 +1493,15 @@ LRESULT CALLBACK RenderDevice::WindowEventCallback(HWND hRecipient, UINT message
 
                 videoSettings.windowState = WINDOWSTATE_INACTIVE;
             }
+
+            forceExit = true;
             break;
 
         case WM_PAINT:
             BeginPaint(hRecipient, &Paint);
             EndPaint(hRecipient, &Paint);
+
+            forceExit = true;
             break;
 
         case WM_DEVICECHANGE: {
@@ -1486,11 +1526,17 @@ LRESULT CALLBACK RenderDevice::WindowEventCallback(HWND hRecipient, UINT message
 #if RETRO_INPUTDEVICE_XINPUT
             SKU::InitXInputAPI();
 #endif
+
+            forceExit = true;
             break;
         }
 
 #if RETRO_INPUTDEVICE_RAWINPUT
-        case WM_INPUT: SKU::UpdateHIDButtonStates((HRAWINPUT)lParam); break;
+        case WM_INPUT:
+            SKU::UpdateHIDButtonStates((HRAWINPUT)lParam);
+
+            forceExit = true;
+            break;
 #endif
 
         case WM_SYSCOMMAND: {
@@ -1508,21 +1554,30 @@ LRESULT CALLBACK RenderDevice::WindowEventCallback(HWND hRecipient, UINT message
                 videoSettings.windowState = WINDOWSTATE_ACTIVE;
             }
 
-            return DefWindowProc(hRecipient, WM_SYSCOMMAND, wParam, lParam);
+            break;
         }
 
         case WM_MENUSELECT:
         case WM_ENTERSIZEMOVE:
             touchInfo.down[0] = 0;
             touchInfo.count   = 0;
+
+            forceExit = true;
             break;
 
-        case WM_EXITSIZEMOVE: GetDisplays(); break;
+        case WM_EXITSIZEMOVE:
+            GetDisplays();
 
-        default: return DefWindowProc(hRecipient, message, wParam, lParam);
+            forceExit = true;
+            break;
+
+        default: break;
     }
 
-    return 0;
+    if (forceExit)
+        return 0;
+    else
+        return DefWindowProc(hRecipient, message, wParam, lParam);
 }
 
 void RenderDevice::SetupImageTexture(int32 width, int32 height, uint8 *imagePixels)
