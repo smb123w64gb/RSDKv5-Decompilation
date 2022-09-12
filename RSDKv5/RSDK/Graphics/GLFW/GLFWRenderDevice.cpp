@@ -390,7 +390,9 @@ void RenderDevice::CopyFrameBuffer()
 bool RenderDevice::ProcessEvents()
 {
     glfwPollEvents();
-    return !glfwWindowShouldClose(window);
+    if (glfwWindowShouldClose(window))
+        isRunning = false;
+    return false;
 }
 
 void RenderDevice::FlipScreen()
@@ -698,9 +700,26 @@ void RenderDevice::RefreshWindow()
 
     if (!InitGraphicsAPI() || !InitShaders())
         return;
+
+    videoSettings.windowState = WINDOWSTATE_ACTIVE;
 }
 
-void RenderDevice::GetWindowSize(int32 *width, int32 *height) { glfwGetWindowSize(window, width, height); }
+void RenderDevice::GetWindowSize(int32 *width, int32 *height)
+{
+    int32 widest = 0, highest = 0, count = 0;
+    GLFWmonitor **monitors = glfwGetMonitors(&count);
+    for (int32 i = 0; i < count; i++) {
+        const GLFWvidmode *mode = glfwGetVideoMode(monitors[i]);
+        if (mode->height > highest) {
+            highest = mode->height;
+            widest  = mode->width;
+        }
+    }
+    if (width)
+        *width = widest;
+    if (height)
+        *height = highest;
+}
 
 void RenderDevice::SetupImageTexture(int32 width, int32 height, uint8 *imagePixels)
 {

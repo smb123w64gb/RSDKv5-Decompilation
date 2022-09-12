@@ -83,7 +83,7 @@ int32 RSDK::RunRetroEngine(int32 argc, char *argv[])
 #else
     while (RenderDevice::isRunning) {
 #endif
-        RenderDevice::isRunning = RenderDevice::ProcessEvents();
+        RenderDevice::ProcessEvents();
 
         if (!RenderDevice::isRunning)
             break;
