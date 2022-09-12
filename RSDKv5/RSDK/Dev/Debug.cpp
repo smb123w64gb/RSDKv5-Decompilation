@@ -88,7 +88,11 @@ void RSDK::PrintLog(int32 mode, const char *message, ...)
             }
             __android_log_print(as, "RSDKv5", "%s", outputString);
 #elif RETRO_PLATFORM == RETRO_SWITCH || RETRO_PLATFORM == RETRO_3DS
-            printf("%s", outputString);
+
+#if RETRO_PLATFORM == RETRO_3DS 
+            if (printToConsole)
+#endif
+              printf("%s", outputString);
 #endif
         }
 

@@ -319,7 +319,6 @@ void RSDK::ProcessEngine()
         default: break;
 
         case ENGINESTATE_LOAD:
-            printf("ENGINESTATE_LOAD\n");
             if (!sceneInfo.listData) {
                 sceneInfo.state = ENGINESTATE_NONE;
             }
