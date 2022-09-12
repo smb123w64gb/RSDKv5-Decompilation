@@ -697,6 +697,11 @@ void RSDK::ProcessFrozenObjects()
 }
 void RSDK::ProcessObjectDrawLists()
 {
+#if RETRO_PLATFORM == RETRO_3DS
+    if (RenderDevice::CheckForFrameSkip())
+      return;
+#endif
+
     if (sceneInfo.state != ENGINESTATE_LOAD && sceneInfo.state != (ENGINESTATE_LOAD | ENGINESTATE_STEPOVER)) {
         for (int32 s = 0; s < videoSettings.screenCount; ++s) {
             currentScreen             = &screens[s];

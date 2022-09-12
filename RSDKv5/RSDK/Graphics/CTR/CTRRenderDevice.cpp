@@ -1,7 +1,15 @@
 #define SCREEN_XSIZE (400)
 #define SCREEN_YSIZE (240)
 
+#define SCREEN_REFRESH (59.94f)
+
 using namespace RSDK;
+
+static float msPerFrame = 1000.0f / SCREEN_REFRESH;
+
+u64 curFrame;
+u64 prevFrame;
+float msElapsed;
 
 bool RenderDevice::Init()
 {
@@ -46,37 +54,33 @@ void RenderDevice::FlipScreen()
   u16 *src = screens[0].frameBuffer;
   u16 *dst = (uint16*) gfxGetFramebuffer(GFX_TOP, GFX_LEFT, 0, 0);
 
-  switch (videoSettings.screenCount) {
-    default:
-    case 0:
-      // image/video buffer, break
-      break;
-    case 1:
-      for (int y = 0; y < SCREEN_YSIZE; y++) {
-        for (int x = 0; x < SCREEN_XSIZE; x++) {
-          dst[((x * 240) + (240 - y - 1))] = *src++;
+  if (!CheckForFrameSkip()) {
+    switch (videoSettings.screenCount) {
+      default:
+      case 0:
+        // image/video buffer, break
+        break;
+      case 1:
+        for (int y = 0; y < SCREEN_YSIZE; y++) {
+          for (int x = 0; x < SCREEN_XSIZE; x++) {
+            dst[((x * 240) + (240 - y - 1))] = *src++;
+          }
         }
-      }
-      break;
+        break;
 
-    // the separate screens used for competition mode will likely 
-    // never be supported by the 3DS port
-    case 2:
-    case 3:
-    case 4:
-      break;
+      // the separate screens used for competition mode will likely 
+      // never be supported by the 3DS port
+      case 2:
+      case 3:
+      case 4:
+        break;
+    }
+
+    gfxFlushBuffers();
+    gfxSwapBuffers();
   }
 
-  gfxFlushBuffers();
-  gfxSwapBuffers();
-
-  /*
-  if (windowRefreshDelay > 0) {
-    windowRefreshDelay--;
-    if (!windowRefreshDelay)
-      UpdateGameWindow();
-  }
-  */
+  gspWaitForVBlank();
 }
 
 void RenderDevice::Release(bool32 isRefresh)
@@ -130,13 +134,22 @@ void RenderDevice::InitFPSCap()
 
 bool RenderDevice::CheckFPSCap()
 {
-  gspWaitForVBlank();
   return true;
 }
 
 void RenderDevice::UpdateFPSCap()
 {
-  return;
+  curFrame = osGetTime();
+  msElapsed = (float) (curFrame - prevFrame);
+  prevFrame = curFrame;
+}
+
+bool RenderDevice::CheckForFrameSkip() 
+{
+  if (msElapsed <= ceil(msPerFrame * 1.2))
+    return false;
+  else
+    return true;    
 }
 
 // NOTE: shaders likely won't ever be supported by the 3DS port; given
