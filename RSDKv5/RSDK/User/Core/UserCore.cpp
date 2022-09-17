@@ -437,63 +437,63 @@ void RSDK::LoadSettingsINI()
         AllocateStorage((void **)&gamePadMappings, sizeof(GamePadMappings) * gamePadCount, DATASET_STG, true);
 #endif
 
-#if RETRO_PLATFORM != RETRO_3DS
         for (int32 i = CONT_P1; i <= gamePadCount; ++i) {
-        for (int32 i = 0; i < gamePadCount; ++i) {
-            char buffer[0x30];
-            char mappings[0x100];
+          for (int32 i = 0; i < gamePadCount; ++i) {
+#if RETRO_PLATFORM != RETRO_3DS
+              char buffer[0x30];
+              char mappings[0x100];
 
-            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:name", CONT_P1 + i);
-            sprintf_s(gamePadMappings[i].name, (int32)sizeof(gamePadMappings[i].name), "%s", iniparser_getstring(ini, buffer, 0));
+              sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:name", CONT_P1 + i);
+              sprintf_s(gamePadMappings[i].name, (int32)sizeof(gamePadMappings[i].name), "%s", iniparser_getstring(ini, buffer, 0));
 
-            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:type", CONT_P1 + i);
-            gamePadMappings[i].type = iniparser_getint(ini, buffer, 0);
+              sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:type", CONT_P1 + i);
+              gamePadMappings[i].type = iniparser_getint(ini, buffer, 0);
 
-            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:vendorID", CONT_P1 + i);
-            gamePadMappings[i].vendorID = iniparser_getint(ini, buffer, 0);
+              sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:vendorID", CONT_P1 + i);
+              gamePadMappings[i].vendorID = iniparser_getint(ini, buffer, 0);
 
-            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:productID", CONT_P1 + i);
-            gamePadMappings[i].productID = iniparser_getint(ini, buffer, 0);
+              sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:productID", CONT_P1 + i);
+              gamePadMappings[i].productID = iniparser_getint(ini, buffer, 0);
 
-            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:mappingTypes", CONT_P1 + i);
-            sprintf_s(mappings, (int32)sizeof(mappings), "%s", iniparser_getstring(ini, buffer, 0));
+              sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:mappingTypes", CONT_P1 + i);
+              sprintf_s(mappings, (int32)sizeof(mappings), "%s", iniparser_getstring(ini, buffer, 0));
 
-            char *tok = strtok(mappings, ", ");
-            for (int32 b = 0; tok; ++b) {
-                gamePadMappings[i].buttons[b].mappingType = atoi(tok);
-                tok                                       = strtok(0, " ,.-");
-            }
+              char *tok = strtok(mappings, ", ");
+              for (int32 b = 0; tok; ++b) {
+                  gamePadMappings[i].buttons[b].mappingType = atoi(tok);
+                  tok                                       = strtok(0, " ,.-");
+              }
 
-            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:offsets", CONT_P1 + i);
-            sprintf_s(mappings, (int32)sizeof(mappings), "%s", iniparser_getstring(ini, buffer, 0));
+              sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:offsets", CONT_P1 + i);
+              sprintf_s(mappings, (int32)sizeof(mappings), "%s", iniparser_getstring(ini, buffer, 0));
 
-            tok = strtok(mappings, ", ");
-            for (int32 b = 0; tok; ++b) {
-                gamePadMappings[i].buttons[b].offset = atoi(tok);
-                tok                                  = strtok(0, " ,.-");
-            }
+              tok = strtok(mappings, ", ");
+              for (int32 b = 0; tok; ++b) {
+                  gamePadMappings[i].buttons[b].offset = atoi(tok);
+                  tok                                  = strtok(0, " ,.-");
+              }
 
-            sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:maskVals", CONT_P1 + i);
-            sprintf_s(mappings, (int32)sizeof(mappings), "%s", iniparser_getstring(ini, buffer, 0));
-            tok = strtok(mappings, ", ");
-            for (int32 b = 0; tok; ++b) {
-                int32 mask = 1;
-                for (int32 m = 0; m < 18; ++m) {
-                    if (strcmp(buttonNames[m], tok) == 0) {
-                        gamePadMappings[i].buttons[b].maskVal = mask;
-                        break;
-                    }
-                    mask <<= 1;
-                }
+              sprintf_s(buffer, (int32)sizeof(buffer), "GamePad Map %d:maskVals", CONT_P1 + i);
+              sprintf_s(mappings, (int32)sizeof(mappings), "%s", iniparser_getstring(ini, buffer, 0));
+              tok = strtok(mappings, ", ");
+              for (int32 b = 0; tok; ++b) {
+                  int32 mask = 1;
+                  for (int32 m = 0; m < 18; ++m) {
+                      if (strcmp(buttonNames[m], tok) == 0) {
+                          gamePadMappings[i].buttons[b].maskVal = mask;
+                          break;
+                      }
+                      mask <<= 1;
+                  }
 
-                tok = strtok(0, " ,.-");
-            }
-        }
+                  tok = strtok(0, " ,.-");
+              }
 #endif
+          }
+        }
 
         iniparser_freedict(ini);
-    }
-    else {
+    } else {
         videoSettings.windowed       = true;
         videoSettings.bordered       = false;
         videoSettings.exclusiveFS    = true;

@@ -829,7 +829,7 @@ void RSDK::SKU::UpdateKeyState(int32 keyCode)
             KEYMASK_C,  KEYMASK_X,    KEYMASK_Y,    KEYMASK_Z,     KEYMASK_START, KEYMASK_SELECT,
         };
 
-        for (int32 k = 0; k < KEY_MAX; k++) {
+        for (int32 k = 0; k < RSDK_KEY_MAX; k++) {
             if (keyCode == buttons[k]->keyMap)
                 keyState[i - 1] |= keyMasks[k];
             else if (buttons[k]->keyMap == -1)
@@ -858,7 +858,7 @@ void RSDK::SKU::ClearKeyState(int32 keyCode)
             KEYMASK_C,  KEYMASK_X,    KEYMASK_Y,    KEYMASK_Z,     KEYMASK_START, KEYMASK_SELECT,
         };
 
-        for (int32 k = 0; k < KEY_MAX; k++) {
+        for (int32 k = 0; k < RSDK_KEY_MAX; k++) {
             if (keyCode == buttons[k]->keyMap)
                 keyState[i - 1] &= ~keyMasks[k];
         }
