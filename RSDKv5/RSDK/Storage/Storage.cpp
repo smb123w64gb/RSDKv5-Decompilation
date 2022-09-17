@@ -11,11 +11,12 @@ DataStorage RSDK::dataStorage[DATASET_MAX];
 bool32 RSDK::InitStorage()
 {
     // storage limit (in ints)
-    dataStorage[DATASET_STG].storageLimit = 24 * 0x100000; // 24MB
-    dataStorage[DATASET_MUS].storageLimit = 8 * 0x100000;  // 8MB
-    dataStorage[DATASET_SFX].storageLimit = 32 * 0x100000; // 64MB // 32 * 0x100000; // 32 MB
-    dataStorage[DATASET_STR].storageLimit = 1 * 0x100000;  // 1MB
-    dataStorage[DATASET_TMP].storageLimit = 8 * 0x100000;  // 8MB
+    // O3DS: seems fine at 24MB?
+    dataStorage[DATASET_STG].storageLimit = 17 * 0x100000; // 17 MB
+    dataStorage[DATASET_MUS].storageLimit = 8 * 0x100000;  // 8 MB
+    dataStorage[DATASET_SFX].storageLimit = 32 * 0x100000; // 32 MB
+    dataStorage[DATASET_STR].storageLimit = 1 * 0x100000;  // 1 MB
+    dataStorage[DATASET_TMP].storageLimit = 6 * 0x100000;  // 6 MB
 
     for (int32 s = 0; s < DATASET_MAX; ++s) {
         dataStorage[s].memoryTable = (int32 *)malloc(dataStorage[s].storageLimit);
