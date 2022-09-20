@@ -1,5 +1,13 @@
 using namespace RSDK;
 
+#if !SAMPLE_USE_S16
+#error "ERROR: Incompatible sample format for 3DS builds."
+#endif
+
+#if SAMPLE_USE_S16
+#define TARGET_OUT_FORMAT (NDSP_FORMAT_STEREO_PCM16)
+#endif
+
 // heavily referenced:  https://github.com/devkitPro/3ds-examples/blob/master/audio/opus-decoding/source/main.c
 
 #define SAMPLE_RATE         (AUDIO_FREQUENCY)
@@ -41,7 +49,7 @@ inline s32 GetThreadPriority() {
 }
 
 // 3DS samples are SIGNED
-inline s16 convertSample(float f) {
+inline s16 floatToS16(float f) {
   float fOut = (f * 32768) * 0.75;
   return (s16) fOut;
 }
@@ -54,7 +62,7 @@ bool32 AudioDevice::Init()
   ndspSetOutputMode(NDSP_OUTPUT_STEREO);
   ndspChnSetInterp(0, NDSP_INTERP_POLYPHASE);
   ndspChnSetRate(0, SAMPLE_RATE);
-  ndspChnSetFormat(0, NDSP_FORMAT_STEREO_PCM16);
+  ndspChnSetFormat(0, TARGET_OUT_FORMAT);
 
   InitAudioChannels();
 
@@ -118,10 +126,10 @@ void AudioDevice::Release()
 void AudioDevice::ProcessAudioMixing(void* stream, int32 length)
 {
   // taken from SDL2 backend
-  s16 *streamF    = (s16*)stream;
-  s16 *streamEndF = ((s16*)stream) + length;
+  SAMPLE_FORMAT *streamF    = (SAMPLE_FORMAT*)stream;
+  SAMPLE_FORMAT *streamEndF = ((SAMPLE_FORMAT*)stream) + length;
 
-  memset(stream, 0, length * sizeof(s16));
+  memset(stream, 0, length * sizeof(SAMPLE_FORMAT));
 
   for (int32 c = 0; c < CHANNEL_COUNT; ++c) {
       ChannelInfo *channel = &channels[c];
@@ -150,7 +158,7 @@ void AudioDevice::ProcessAudioMixing(void* stream, int32 length)
               float panR = volR * engine.soundFXVolume;
 
               uint32 speedPercent       = 0;
-              s16 *curStreamF           = streamF;
+              SAMPLE_FORMAT *curStreamF           = streamF;
               while (curStreamF < streamEndF && streamF < streamEndF) {
                   SAMPLE_FORMAT sample = (sfxBuffer[1] - *sfxBuffer) * speedMixAmounts[speedPercent >> 6] + *sfxBuffer;
 
@@ -159,8 +167,10 @@ void AudioDevice::ProcessAudioMixing(void* stream, int32 length)
                   channel->bufferPos += FROM_FIXED(speedPercent);
                   speedPercent &= 0xFFFF;
 
-                  curStreamF[0] += convertSample(sample * panR);
-                  curStreamF[1] += convertSample(sample * panL);
+#if SAMPLE_USE_S16
+                  curStreamF[0] += (s16) (sample * panR);
+                  curStreamF[1] += (s16) (sample * panL);
+#endif
                   curStreamF += 2;
 
                   if (channel->bufferPos >= channel->sampleLength) {
@@ -201,14 +211,16 @@ void AudioDevice::ProcessAudioMixing(void* stream, int32 length)
               float panR = volR * engine.streamVolume;
 
               uint32 speedPercent       = 0;
-              s16 *curStreamF           = streamF;
+              SAMPLE_FORMAT *curStreamF           = streamF;
               while (curStreamF < streamEndF && streamF < streamEndF) {
                   speedPercent += channel->speed;
                   int32 next = FROM_FIXED(speedPercent);
                   speedPercent &= 0xFFFF;
 
-                  curStreamF[0] += convertSample(panR * *streamBuffer);
-                  curStreamF[1] += convertSample(panL * streamBuffer[next]);
+#if SAMPLE_USE_S16
+                  curStreamF[0] += (s16) (*streamBuffer * panR);
+                  curStreamF[1] += (s16) (streamBuffer[next] * panL);
+#endif
                   curStreamF += 2;
 
                   streamBuffer += next * 2;

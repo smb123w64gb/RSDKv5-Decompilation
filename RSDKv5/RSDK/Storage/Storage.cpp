@@ -11,10 +11,10 @@ DataStorage RSDK::dataStorage[DATASET_MAX];
 bool32 RSDK::InitStorage()
 {
     // storage limit (in ints)
-    // O3DS: seems fine at 24MB?
+    // O3DS: seems fine at 29MB?
     dataStorage[DATASET_STG].storageLimit = 17 * 0x100000; // 17 MB
     dataStorage[DATASET_MUS].storageLimit = 8 * 0x100000;  // 8 MB
-    dataStorage[DATASET_SFX].storageLimit = 32 * 0x100000; // 32 MB
+    dataStorage[DATASET_SFX].storageLimit = 16 * 0x100000; // 16 MB
     dataStorage[DATASET_STR].storageLimit = 1 * 0x100000;  // 1 MB
     dataStorage[DATASET_TMP].storageLimit = 6 * 0x100000;  // 6 MB
 

@@ -6,7 +6,6 @@
 
 #define STB_VORBIS_NO_PUSHDATA_API
 #define STB_VORBIS_NO_STDIO
-#define STB_VORBIS_NO_INTEGER_CONVERSION
 #include "stb_vorbis/stb_vorbis.c"
 
 stb_vorbis *vorbisInfo = NULL;
@@ -42,15 +41,19 @@ uint8 AudioDeviceBase::audioState               = 0;
 uint8 AudioDeviceBase::audioFocus               = 0;
 
 int32 AudioDeviceBase::mixBufferID = 0;
-float AudioDeviceBase::mixBuffer[3][MIX_BUFFER_SIZE];
+SAMPLE_FORMAT AudioDeviceBase::mixBuffer[3][MIX_BUFFER_SIZE];
 
 void RSDK::UpdateStreamBuffer(ChannelInfo *channel)
 {
     int32 bufferRemaining = 0x800;
-    float *buffer         = channel->samplePtr;
+    SAMPLE_FORMAT *buffer         = channel->samplePtr;
 
     for (int32 s = 0; s < 0x800;) {
+#if SAMPLE_USE_FLOAT
         int32 samples = stb_vorbis_get_samples_float_interleaved(vorbisInfo, 2, buffer, bufferRemaining) * 2;
+#elif SAMPLE_USE_S16
+        int32 samples = stb_vorbis_get_samples_short_interleaved(vorbisInfo, 2, buffer, bufferRemaining) * 2;
+#endif
         if (!samples) {
             if (channel->loop == 1 && stb_vorbis_seek_frame(vorbisInfo, streamLoopPoint)) {
                 // we're looping & the seek was successful, get more samples
@@ -70,7 +73,7 @@ void RSDK::UpdateStreamBuffer(ChannelInfo *channel)
     }
 
     for (int32 i = 0; i < 0x800; i += 4) {
-        float *sampleBuffer = &channel->samplePtr[i];
+        SAMPLE_FORMAT *sampleBuffer = &channel->samplePtr[i];
 
         sampleBuffer[0] = sampleBuffer[0] * 0.5;
         sampleBuffer[1] = sampleBuffer[1] * 0.5;
@@ -226,22 +229,35 @@ void RSDK::ReadSfx(char *filename, uint8 id, uint8 plays, uint8 scope, uint32 *s
             if (sampleBits == 16)
                 length >>= 1;
 
-            AllocateStorage((void **)&sfxList[id].buffer, sizeof(float) * length, DATASET_SFX, false);
+            AllocateStorage((void **)&sfxList[id].buffer, sizeof(SAMPLE_FORMAT) * length, DATASET_SFX, false);
             sfxList[id].length = length;
 
-            float *buffer = (float *)sfxList[id].buffer;
+            SAMPLE_FORMAT *buffer = (SAMPLE_FORMAT *)sfxList[id].buffer;
             if (sampleBits == 8) {
                 for (int32 s = 0; s < length; ++s) {
+#if SAMPLE_USE_FLOAT
                     int32 sample = ReadInt8(&info);
                     *buffer++    = (sample - 128) * 0.0078125; // 0.0078125 == 128.0
+#elif SAMPLE_USE_S16
+                    int16 sample = (int16) ReadInt8(&info);
+                    int16 sample16 = (int16) (sample << 8) - 32768;
+                    *buffer++ = sample16;
+#endif
                 }
             }
             else {
                 for (int32 s = 0; s < length; ++s) {
+#if SAMPLE_USE_FLOAT
                     int32 sample = ReadInt16(&info);
                     if (sample > 0x7FFF)
                         sample = (sample & 0x7FFF) - 0x8000;
                     *buffer++ = (sample * 0.000030518) * 0.75; // 0.000030518 == 32,767.5 
+#elif SAMPLE_USE_S16 
+                    int16 sample = ReadInt16(&info);
+                    if (sample > 0x7FFF)
+                        sample = (sample & 0x7FFF) - 0x8000;
+                    *buffer++ = (s16) (sample * 0.75);
+#endif
                 }
             }
         }

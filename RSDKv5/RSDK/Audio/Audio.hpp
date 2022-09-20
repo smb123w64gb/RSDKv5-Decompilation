@@ -3,19 +3,27 @@
 
 namespace RSDK
 {
+#if RETRO_PLATFORM == RETRO_3DS
+#define SAMPLE_USE_FLOAT (0)
+#define SAMPLE_USE_S16   (1)
+#define SAMPLE_FORMAT    s16
+#else 
+#define SAMPLE_USE_FLOAT (1)
+#define SAMPLE_USE_S16   (0)
+#define SAMPLE_USE_FLOAT float
+#endif
 
 #define SFX_COUNT     (0x100)
 #define CHANNEL_COUNT (0x10)
 
 #define MIX_BUFFER_SIZE (0x800)
-#define SAMPLE_FORMAT   float
 
 #define AUDIO_FREQUENCY (44100)
 #define AUDIO_CHANNELS  (2)
 
 struct SFXInfo {
     RETRO_HASH_MD5(hash);
-    float *buffer;
+    SAMPLE_FORMAT *buffer;
     size_t length;
     int32 playCount;
     uint8 maxConcurrentPlays;
@@ -23,7 +31,7 @@ struct SFXInfo {
 };
 
 struct ChannelInfo {
-    float *samplePtr;
+    SAMPLE_FORMAT *samplePtr;
     float pan;
     float volume;
     int32 speed;
