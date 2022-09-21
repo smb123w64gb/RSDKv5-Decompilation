@@ -1,6 +1,9 @@
 #include "RSDK/Core/RetroEngine.hpp"
 #include "main.hpp"
 
+
+__attribute__((weak)) u32 __ctru_heap_size        = 0x3280000;
+__attribute__((weak)) u32 __ctru_linear_heap_size = 0x200000;
 #if RETRO_STANDALONE
 
 #if RETRO_PLATFORM == RETRO_WIN && !RETRO_RENDERDEVICE_SDL2
