@@ -61,7 +61,7 @@ void RSDK::UpdateStreamBuffer(ChannelInfo *channel)
             else {
                 channel->state   = CHANNEL_IDLE;
                 channel->soundID = -1;
-                memset(buffer, 0, sizeof(float) * bufferRemaining);
+                memset(buffer, 0, sizeof(SAMPLE_FORMAT) * bufferRemaining);
 
                 break;
             }

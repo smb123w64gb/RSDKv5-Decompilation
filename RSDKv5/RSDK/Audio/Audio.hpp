@@ -10,7 +10,7 @@ namespace RSDK
 #else 
 #define SAMPLE_USE_FLOAT (1)
 #define SAMPLE_USE_S16   (0)
-#define SAMPLE_USE_FLOAT float
+#define SAMPLE_FORMAT    float
 #endif
 
 #define SFX_COUNT     (0x100)

@@ -2,6 +2,9 @@
 #include "main.hpp"
 
 #if RETRO_PLATFORM == RETRO_3DS 
+__attribute__((weak)) u32 __ctru_heap_size        = 0x3280000;
+__attribute__((weak)) u32 __ctru_linear_heap_size = 0x200000;
+
 bool RSDK::printToConsole;
 #endif
 
