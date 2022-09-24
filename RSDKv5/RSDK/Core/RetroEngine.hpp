@@ -607,6 +607,10 @@ struct RetroEngine {
 
 extern RetroEngine engine;
 
+#if RETRO_PLATFORM == RETRO_3DS 
+extern bool printToConsole;
+#endif
+
 #if RETRO_REV02
 typedef void (*LogicLinkHandle)(GameInfo *info);
 #else

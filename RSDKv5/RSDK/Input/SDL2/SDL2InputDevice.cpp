@@ -36,7 +36,7 @@ void RSDK::SKU::InputDeviceSDL::UpdateInput()
     float prevTriggerDeltaR = triggerDeltaR;
 
     this->buttonMasks = 0;
-    for (int32 i = 0; i < KEY_MAX + 4; ++i) {
+    for (int32 i = 0; i < RSDK_KEY_MAX + 4; ++i) {
         if (getControllerButton(this, buttonMap[i]))
             this->buttonMasks |= keyMasks[i];
     }

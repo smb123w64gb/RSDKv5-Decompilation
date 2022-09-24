@@ -30,6 +30,7 @@ public:
   static void InitFPSCap();
   static bool CheckFPSCap();
   static void UpdateFPSCap();
+  static bool CheckForFrameSkip();
 
   static void GetWindowSize(int32* width, int32* height);
 

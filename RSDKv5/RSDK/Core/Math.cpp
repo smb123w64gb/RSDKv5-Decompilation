@@ -3,23 +3,23 @@
 
 using namespace RSDK;
 
-int32 RSDK::sin1024LookupTable[0x400];
-int32 RSDK::cos1024LookupTable[0x400];
-int32 RSDK::tan1024LookupTable[0x400];
-int32 RSDK::asin1024LookupTable[0x400];
-int32 RSDK::acos1024LookupTable[0x400];
+int16 RSDK::sin1024LookupTable[0x400];
+int16 RSDK::cos1024LookupTable[0x400];
+int16 RSDK::tan1024LookupTable[0x400];
+int16 RSDK::asin1024LookupTable[0x400];
+int16 RSDK::acos1024LookupTable[0x400];
 
-int32 RSDK::sin512LookupTable[0x200];
-int32 RSDK::cos512LookupTable[0x200];
-int32 RSDK::tan512LookupTable[0x200];
-int32 RSDK::asin512LookupTable[0x200];
-int32 RSDK::acos512LookupTable[0x200];
+int16 RSDK::sin512LookupTable[0x200];
+int16 RSDK::cos512LookupTable[0x200];
+int16 RSDK::tan512LookupTable[0x200];
+int16 RSDK::asin512LookupTable[0x200];
+int16 RSDK::acos512LookupTable[0x200];
 
-int32 RSDK::sin256LookupTable[0x100];
-int32 RSDK::cos256LookupTable[0x100];
-int32 RSDK::tan256LookupTable[0x100];
-int32 RSDK::asin256LookupTable[0x100];
-int32 RSDK::acos256LookupTable[0x100];
+int16 RSDK::sin256LookupTable[0x100];
+int16 RSDK::cos256LookupTable[0x100];
+int16 RSDK::tan256LookupTable[0x100];
+int16 RSDK::asin256LookupTable[0x100];
+int16 RSDK::acos256LookupTable[0x100];
 
 uint8 RSDK::arcTan256LookupTable[0x100 * 0x100];
 
