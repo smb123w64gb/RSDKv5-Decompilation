@@ -251,12 +251,12 @@ void RSDK::ReadSfx(char *filename, uint8 id, uint8 plays, uint8 scope, uint32 *s
                     int32 sample = ReadInt16(&info);
                     if (sample > 0x7FFF)
                         sample = (sample & 0x7FFF) - 0x8000;
-                    *buffer++ = (sample * 0.000030518) * 0.75; // 0.000030518 == 32,767.5 
+                    *buffer++ = (sample * 0.000030518); // 0.000030518 == 32,767.5 
 #elif SAMPLE_USE_S16 
                     int16 sample = ReadInt16(&info);
                     if (sample > 0x7FFF)
                         sample = (sample & 0x7FFF) - 0x8000;
-                    *buffer++ = (s16) (sample * 0.75);
+                    *buffer++ = sample;
 #endif
                 }
             }

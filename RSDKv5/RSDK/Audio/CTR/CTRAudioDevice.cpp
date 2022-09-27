@@ -11,7 +11,7 @@ using namespace RSDK;
 // heavily referenced:  https://github.com/devkitPro/3ds-examples/blob/master/audio/opus-decoding/source/main.c
 
 #define SAMPLE_RATE         (AUDIO_FREQUENCY)
-#define SAMPLES_PER_BUF     (SAMPLE_RATE * 120 / 1000)
+#define SAMPLES_PER_BUF     (SAMPLE_RATE * 60 / 1000)
 #define CHANNELS_PER_SAMPLE (2)
 #define THREAD_STACK_SZ     (32 * 1024)
 #define WAVEBUF_COUNT       (3)
@@ -50,7 +50,7 @@ inline s32 GetThreadPriority() {
 
 // 3DS samples are SIGNED
 inline s16 floatToS16(float f) {
-  float fOut = (f * 32768) * 0.75;
+  float fOut = (f * 32768);
   return (s16) fOut;
 }
 
@@ -168,8 +168,8 @@ void AudioDevice::ProcessAudioMixing(void* stream, int32 length)
                   speedPercent &= 0xFFFF;
 
 #if SAMPLE_USE_S16
-                  curStreamF[0] += (s16) (sample * panR);
-                  curStreamF[1] += (s16) (sample * panL);
+                  curStreamF[0] += (s16) (sample * panR * 0.7);
+                  curStreamF[1] += (s16) (sample * panL * 0.7);
 #endif
                   curStreamF += 2;
 
@@ -218,8 +218,8 @@ void AudioDevice::ProcessAudioMixing(void* stream, int32 length)
                   speedPercent &= 0xFFFF;
 
 #if SAMPLE_USE_S16
-                  curStreamF[0] += (s16) (*streamBuffer * panR);
-                  curStreamF[1] += (s16) (streamBuffer[next] * panL);
+                  curStreamF[0] += (s16) (*streamBuffer * panR * 0.7);
+                  curStreamF[1] += (s16) (streamBuffer[next] * panL) * 0.7;
 #endif
                   curStreamF += 2;
 

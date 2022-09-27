@@ -81,9 +81,8 @@ void RenderDevice::FlipScreen()
 
     gfxFlushBuffers();
     gfxSwapBuffers();
+    gspWaitForVBlank();
   }
-
-  gspWaitForVBlank();
 }
 
 void RenderDevice::Release(bool32 isRefresh)
@@ -149,7 +148,7 @@ void RenderDevice::UpdateFPSCap()
 
 bool RenderDevice::CheckForFrameSkip() 
 {
-  if (msElapsed <= ceil(msPerFrame * 1.2))
+  if (msElapsed <= ceil(msPerFrame * 2.0))
     return false;
   else
     return true;    
