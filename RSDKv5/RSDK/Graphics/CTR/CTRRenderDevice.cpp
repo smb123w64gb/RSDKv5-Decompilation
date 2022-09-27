@@ -1,5 +1,5 @@
-#define SCREEN_XSIZE (400)
-#define SCREEN_YSIZE (240)
+#define SCREEN_XSIZE_3DS (400)
+#define SCREEN_YSIZE_3DS (240)
 
 #define SCREEN_REFRESH (59.94f)
 
@@ -26,7 +26,7 @@ bool RenderDevice::Init()
   gfxSetScreenFormat(GFX_TOP, GSP_RGB565_OES);
   gfxSetDoubleBuffering(GFX_TOP, true);
 
-  scanlines = (ScanlineInfo*) malloc(SCREEN_YSIZE * sizeof(ScanlineInfo));
+  scanlines = (ScanlineInfo*) malloc(SCREEN_YSIZE_3DS * sizeof(ScanlineInfo));
   if (!scanlines)
     return false;
 
@@ -35,9 +35,9 @@ bool RenderDevice::Init()
   videoSettings.dimMax = 1.0;
   videoSettings.dimPercent = 1.0;
 
-  RSDK::SetScreenSize(0, SCREEN_XSIZE, SCREEN_YSIZE);
+  RSDK::SetScreenSize(0, SCREEN_XSIZE_3DS, SCREEN_YSIZE_3DS);
 
-  memset(screens[0].frameBuffer, 0, SCREEN_XSIZE * SCREEN_YSIZE * sizeof(uint16));
+  memset(screens[0].frameBuffer, 0, SCREEN_XSIZE_3DS * SCREEN_YSIZE_3DS * sizeof(uint16));
 
   InitInputDevices();
   if (!AudioDevice::Init())
@@ -64,8 +64,8 @@ void RenderDevice::FlipScreen()
         // image/video buffer, break
         break;
       case 1:
-        for (int y = 0; y < SCREEN_YSIZE; y++) {
-          for (int x = 0; x < SCREEN_XSIZE; x++) {
+        for (int y = 0; y < SCREEN_YSIZE_3DS; y++) {
+          for (int x = 0; x < SCREEN_XSIZE_3DS; x++) {
             dst[((x * 240) + (240 - y - 1))] = *src++;
           }
         }

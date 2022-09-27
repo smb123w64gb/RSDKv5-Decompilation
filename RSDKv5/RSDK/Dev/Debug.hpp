@@ -130,6 +130,9 @@ void DevMenu_ModsMenu();
 void OpenDevMenu();
 void CloseDevMenu();
 
+void FormatDevString(int32 x, int32 y, int32 align, uint32 color, 
+                      const char* string, ...);
+
 #endif
 
 } // namespace RSDK

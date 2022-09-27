@@ -341,41 +341,57 @@ void RSDK::DevMenu_MainMenu()
     }
     y += 20;
 
-    // Storage box
+    DrawRectangle(currentScreen->center.x - 128, y - 2, 0x100, 52, 0x80, 0xFF,
+                  INK_NONE, true);
 
     // Stage Storage
-    int32 stgUsed = (int32)((sizeof(int32) * dataStorage[DATASET_STG].usedStorage) / (float)dataStorage[DATASET_STG].storageLimit * 126.0);
-    DrawRectangle(currentScreen->center.x - 40, y, 0x80, 0x08, 0x80, 0xFF, INK_NONE, true);
-    DrawRectangle(currentScreen->center.x - 39, y + 1, stgUsed, 6, 0xF0F0F0, 0xFF, INK_NONE, true);
-    DrawDevString("STG", currentScreen->center.x - 64, y, 0, 0xF0F080);
+    int32 stgUsed = (int32)((sizeof(int32) * dataStorage[DATASET_STG].usedStorage) / (float)dataStorage[DATASET_STG].storageLimit * 94.0);
+    DrawRectangle(currentScreen->center.x - 99, y + 1, stgUsed, 6, 0xF0F0F0, 0xFF, INK_NONE, true);
+    DrawDevString("STG", currentScreen->center.x - 126, y, 0, 0xF0F080);
+    FormatDevString(currentScreen->center.x + 2, y, 0, 0xF0F080,
+                "%.2fM / %.2fM", 
+                (float) dataStorage[DATASET_STG].usedStorage * sizeof(int32) / (1024.f * 1024.f),
+                (float) dataStorage[DATASET_STG].storageLimit / (1024.f * 1024.f));
 
     // Music Storage
-    int32 musUsed = (int32)((sizeof(int32) * dataStorage[DATASET_MUS].usedStorage) / (float)dataStorage[DATASET_MUS].storageLimit * 126.0);
+    int32 musUsed = (int32)((sizeof(int32) * dataStorage[DATASET_MUS].usedStorage) / (float)dataStorage[DATASET_MUS].storageLimit * 94.0);
     y += 10;
-    DrawRectangle(currentScreen->center.x - 40, y, 0x80, 0x08, 0x80, 0xFF5, INK_NONE, true);
-    DrawRectangle(currentScreen->center.x - 39, y + 1, musUsed, 6, 0xF0F0F0, 0xFF, INK_NONE, true);
-    DrawDevString("MUS", currentScreen->center.x - 64, y, 0, 0xF0F080);
+    DrawRectangle(currentScreen->center.x - 99, y + 1, musUsed, 6, 0xF0F0F0, 0xFF, INK_NONE, true);
+    DrawDevString("MUS", currentScreen->center.x - 126, y, 0, 0xF0F080);
+    FormatDevString(currentScreen->center.x + 2, y, 0, 0xF0F080,
+                "%.2fM / %.2fM",
+                (float) dataStorage[DATASET_MUS].usedStorage * sizeof(int32) / (1024.f * 1024.f),
+                (float) dataStorage[DATASET_MUS].storageLimit / (1024.f * 1024.f));
 
     // SoundFX Storage
-    int32 sfxUsed = (int32)((sizeof(int32) * dataStorage[DATASET_SFX].usedStorage) / (float)dataStorage[DATASET_SFX].storageLimit * 126.0);
+    int32 sfxUsed = (int32)((sizeof(int32) * dataStorage[DATASET_SFX].usedStorage) / (float)dataStorage[DATASET_SFX].storageLimit * 94.0);
     y += 10;
-    DrawRectangle(currentScreen->center.x - 40, y, 0x80, 0x08, 0x80, 0xFF, INK_NONE, true);
-    DrawRectangle(currentScreen->center.x - 39, y + 1, sfxUsed, 6, 0xF0F0F0, 0xFF, INK_NONE, true);
-    DrawDevString("SFX", currentScreen->center.x - 64, y, 0, 0xF0F080);
+    DrawRectangle(currentScreen->center.x - 99, y + 1, sfxUsed, 6, 0xF0F0F0, 0xFF, INK_NONE, true);
+    DrawDevString("SFX", currentScreen->center.x - 126, y, 0, 0xF0F080);
+    FormatDevString(currentScreen->center.x + 2, y, 0, 0xF0F080,
+                "%.2fM / %.2fM",
+                (float) dataStorage[DATASET_SFX].usedStorage * sizeof(int32) / (1024.f * 1024.f),
+                (float) dataStorage[DATASET_SFX].storageLimit / (1024.f * 1024.f));
 
     // String Storage
-    int32 strUsed = (int32)((sizeof(int32) * dataStorage[DATASET_STR].usedStorage) / (float)dataStorage[DATASET_STR].storageLimit * 126.0);
+    int32 strUsed = (int32)((sizeof(int32) * dataStorage[DATASET_STR].usedStorage) / (float)dataStorage[DATASET_STR].storageLimit * 94.0);
     y += 10;
-    DrawRectangle(currentScreen->center.x - 40, y, 0x80, 0x08, 0x80, 0xFF, INK_NONE, true);
-    DrawRectangle(currentScreen->center.x - 39, y + 1, strUsed, 6, 0xF0F0F0, 0xFF, INK_NONE, true);
-    DrawDevString("STR", currentScreen->center.x - 64, y, 0, 0xF0F080);
+    DrawRectangle(currentScreen->center.x - 99, y + 1, strUsed, 6, 0xF0F0F0, 0xFF, INK_NONE, true);
+    DrawDevString("STR", currentScreen->center.x - 126, y, 0, 0xF0F080);
+    FormatDevString(currentScreen->center.x + 2, y, 0, 0xF0F080,
+                "%.2fM / %.2fM",
+                (float) dataStorage[DATASET_STR].usedStorage * sizeof(int32) / (1024.f * 1024.f),
+                (float) dataStorage[DATASET_STR].storageLimit / (1024.f * 1024.f));
 
     // Temp Storage
-    int32 tmpUsed = (int32)((sizeof(int32) * dataStorage[DATASET_TMP].usedStorage) / (float)dataStorage[DATASET_TMP].storageLimit * 126.0);
+    int32 tmpUsed = (int32)((sizeof(int32) * dataStorage[DATASET_TMP].usedStorage) / (float)dataStorage[DATASET_TMP].storageLimit * 94.0);
     y += 10;
-    DrawRectangle(currentScreen->center.x - 40, y, 0x80, 0x08, 0x80, 0xFF, INK_NONE, true);
-    DrawRectangle(currentScreen->center.x - 39, y + 1, tmpUsed, 6, 0xF0F0F0, 0xFF, INK_NONE, true);
-    DrawDevString("TMP", currentScreen->center.x - 64, y, 0, 0xF0F080);
+    DrawRectangle(currentScreen->center.x - 99, y + 1, tmpUsed, 6, 0xF0F0F0, 0xFF, INK_NONE, true);
+    DrawDevString("TMP", currentScreen->center.x - 126, y, 0, 0xF0F080);
+    FormatDevString(currentScreen->center.x + 2, y, 0, 0xF0F080,
+                "%.2fM / %.2fM",
+                (float) dataStorage[DATASET_TMP].usedStorage * sizeof(int32) / (1024.f * 1024.f),
+                (float) dataStorage[DATASET_TMP].storageLimit / (1024.f * 1024.f));
 
 #if !RETRO_USE_ORIGINAL_CODE
     DevMenu_HandleTouchControls();
@@ -1739,6 +1755,19 @@ void RSDK::DevMenu_DebugOptionsMenu()
 #endif
 }
 #endif
+
+void RSDK::FormatDevString(int32 x, int32 y, int32 align, uint32 color,
+                            const char* string, ...)
+{
+  va_list args;
+  va_start(args, string);
+
+  vsnprintf(outputString, sizeof(outputString), string, args);
+  sprintf(outputString, "%.*s", (int32)sizeof(outputString) - 1, outputString);
+  va_end(args);
+
+  DrawDevString(outputString, x, y, align, color); 
+}
 
 #if RETRO_USE_MOD_LOADER
 void RSDK::DevMenu_ModsMenu()
