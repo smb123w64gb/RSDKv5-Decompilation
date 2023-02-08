@@ -15,6 +15,7 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
       
@@ -25,7 +26,7 @@ jobs:
           sudo ./install-devkitpro-pacman
           
       - name: Install Dependencies
-        run: sudo dkp-pacman -S 3ds-libtheora 3ds-sdl libctru 3ds-dev
+        run: sudo dkp-pacman -S 3ds-libtheora 3ds-sdl libctru 3ds-dev --noconfirm
         
       - name: Build
         run: |
