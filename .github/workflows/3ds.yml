@@ -21,7 +21,6 @@ jobs:
       
       - name: Setup Enviornment
         run: |
-          wget https://apt.devkitpro.org/install-devkitpro-pacman
           chmod +x ./install-devkitpro-pacman
           sudo ./install-devkitpro-pacman
           
