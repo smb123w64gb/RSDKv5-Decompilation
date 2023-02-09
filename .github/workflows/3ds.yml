@@ -5,6 +5,9 @@ on:
  push:
    branches:
      - 3ds-main
+ pull_request:
+   branches:
+     - 3ds-main
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
