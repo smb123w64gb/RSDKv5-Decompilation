@@ -48,6 +48,5 @@ jobs:
       - name: Publish Artifacts
         uses: actions/upload-artifact@v2
         with: 
-          name: xpl32_rom
           name: sonicmania-cia
           path: artifacts
