@@ -23,7 +23,7 @@ jobs:
         run: |
           curl -fsSL https://get.docker.com -o get-docker.sh
           sudo sh ./get-docker.sh
-          docker pull devkitpro/toolchain-base
+          docker pull devkitpro/devkitarm
           
       - name: Install Dependencies
         run: sudo dkp-pacman -S --noconfirm 3ds-libtheora 3ds-sdl libctru 3ds-dev
