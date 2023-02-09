@@ -39,8 +39,6 @@ jobs:
       - name: Package CIA
         run: |
           cd 3ds
-          sudo cp makerom /usr/bin/
-          sudo cp bannertool /usr/bin/
           sudo ./build_cia.sh
           
       # Setup artifact folder
