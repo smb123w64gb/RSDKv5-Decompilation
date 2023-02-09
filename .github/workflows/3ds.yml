@@ -39,6 +39,8 @@ jobs:
       - name: Package CIA
         run: |
           cd 3ds
+          chmod +x bannertool
+          chmod +x makerom
           sudo ./build_cia.sh
           
       # Setup artifact folder
