@@ -29,6 +29,12 @@ jobs:
           git clone -n https://github.com/leethomason/tinyxml2.git
           cd tinyxml2
           git checkout e45d9d16d430a3f5d3eee9fe40d5e194e1e5e63a
+          cd ..
+          mkdir stb_vorbis
+          git clone -n https://github.com/nothings/stb.git
+          cd stb
+          git checkout af1a5bc352164740c1cc1354942b1c6b72eacb8a
+          mv stb_vorbis.c ../stb_vorbis/
           cd ../../../
           export DEVKITPRO=/opt/devkitpro
           export DEVKITARM=$DEVKITPRO/devkitARM
