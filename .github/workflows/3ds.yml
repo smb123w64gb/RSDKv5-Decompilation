@@ -25,8 +25,8 @@ jobs:
           sudo sh ./get-docker.sh
           docker pull devkitpro/devkitarm
           
-      - name: Install Dependencies
-        run: sudo dkp-pacman -S --noconfirm 3ds-libtheora 3ds-sdl libctru 3ds-dev
+      #- name: Install Dependencies
+      #  run: sudo dkp-pacman -S --noconfirm 3ds-libtheora 3ds-sdl libctru 3ds-dev
         
       - name: Build
         run: |
