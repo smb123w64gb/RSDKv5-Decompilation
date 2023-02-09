@@ -25,7 +25,7 @@ jobs:
           git clone https://github.com/Rubberduckycooly/Sonic-Mania-Decompilation
           rm Game
           cd Sonic-Mania-Decompilation
-          mv SonicMania ../RSDKv5-Decompilation/Game
+          mv SonicMania ../Game
           cd ..
           rm -rf Sonic-Mania-Decompilation
           export DEVKITPRO=/opt/devkitpro
