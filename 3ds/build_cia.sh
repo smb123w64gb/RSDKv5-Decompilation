@@ -7,6 +7,9 @@ mkdir -p ../bin/3DS/CTR/out &&
 rm -rf ../bin/3DS/CTR/out/*
 rm -rf ../bin/3DS/CTR/SonicMania.cia
 
+# super user
+sudo su
+
 # make banner
 bannertool makebanner -i ./banner.png -a ./jingle.wav -o ../bin/3DS/CTR/out/banner.bnr &&
 
