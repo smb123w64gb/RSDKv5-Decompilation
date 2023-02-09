@@ -37,10 +37,7 @@ jobs:
           cd stb
           git checkout af1a5bc352164740c1cc1354942b1c6b72eacb8a
           mv stb_vorbis.c ../stb_vorbis/
-          cd ..
-          rm -rf stb
-          rm -rf tinyxml2
-          cd ../..
+          cd ../../..
           export DEVKITPRO=/opt/devkitpro
           export DEVKITARM=$DEVKITPRO/devkitARM
           make PLATFORM=3DS
