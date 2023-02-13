@@ -42,7 +42,7 @@ jobs:
           cd ../../..
           export DEVKITPRO=/opt/devkitpro
           export DEVKITARM=$DEVKITPRO/devkitARM
-          make PLATFORM=3DS
+          make PLATFORM=3DS AUTOBUILD=1
           echo Build done.   
           
       - name: Package CIA
