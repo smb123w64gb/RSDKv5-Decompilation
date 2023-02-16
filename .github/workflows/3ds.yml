@@ -1,0 +1,66 @@
+name: Build CIA
+
+# Controls when the workflow will run
+on:
+ push:
+   branches:
+     - 3ds-main
+ pull_request:
+   branches:
+     - 3ds-main
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm:latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+
+      - name: Build ELF and 3DSX
+        run: |
+          git clone https://github.com/Rubberduckycooly/Sonic-Mania-Decompilation
+          rm Game
+          mv Sonic-Mania-Decompilation/SonicMania Game
+          rm -rf Sonic-Mania-Decompilation
+          cd dependencies/all/
+          git clone -n https://github.com/leethomason/tinyxml2.git
+          cd tinyxml2
+          git checkout e45d9d16d430a3f5d3eee9fe40d5e194e1e5e63a
+          cd ..
+          rm -rf stb_vorbis
+          mkdir stb_vorbis
+          git clone -n https://github.com/nothings/stb.git
+          cd stb
+          git checkout af1a5bc352164740c1cc1354942b1c6b72eacb8a
+          mv stb_vorbis.c ../stb_vorbis/
+          cd ../../..
+          export DEVKITPRO=/opt/devkitpro
+          export DEVKITARM=$DEVKITPRO/devkitARM
+          make PLATFORM=3DS AUTOBUILD=1
+          echo Build done.   
+          
+      - name: Package CIA
+        run: |
+          cd 3ds
+          chmod +x bannertool
+          chmod +x makerom
+          sudo ./build_cia.sh
+          
+      # Setup artifact folder
+      - name: Setup artifact folder
+        run: |
+          mkdir artifacts
+          cp bin/3DS/CTR/SonicMania.cia artifacts/
+
+      # Publish Artifacts
+      - name: Publish Artifacts
+        uses: actions/upload-artifact@v2
+        with: 
+          name: sonicmania-cia
+          path: artifacts
