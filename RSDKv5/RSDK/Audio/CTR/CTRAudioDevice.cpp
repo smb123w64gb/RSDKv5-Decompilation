@@ -154,8 +154,8 @@ void AudioDevice::ProcessAudioMixing(void* stream, int32 length)
               else
                   volR = (1.0 - channel->pan) * channel->volume;
 
-              float panL = volL * engine.soundFXVolume;
-              float panR = volR * engine.soundFXVolume;
+              float panL = volL * engine.soundFXVolume * 0.5;
+              float panR = volR * engine.soundFXVolume * 0.5;
 
               uint32 speedPercent       = 0;
               SAMPLE_FORMAT *curStreamF           = streamF;
@@ -168,8 +168,8 @@ void AudioDevice::ProcessAudioMixing(void* stream, int32 length)
                   speedPercent &= 0xFFFF;
 
 #if SAMPLE_USE_S16
-                  curStreamF[0] += (s16) (sample * panR * 0.7);
-                  curStreamF[1] += (s16) (sample * panL * 0.7);
+                  curStreamF[0] += (s16) (sample * panR);
+                  curStreamF[1] += (s16) (sample * panL);
 #endif
                   curStreamF += 2;
 
@@ -207,8 +207,8 @@ void AudioDevice::ProcessAudioMixing(void* stream, int32 length)
               else
                   volR = (1.0 - channel->pan) * channel->volume;
 
-              float panL = volL * engine.streamVolume;
-              float panR = volR * engine.streamVolume;
+              float panL = volL * engine.streamVolume * 0.5;
+              float panR = volR * engine.streamVolume * 0.5;
 
               uint32 speedPercent       = 0;
               SAMPLE_FORMAT *curStreamF           = streamF;
@@ -218,8 +218,8 @@ void AudioDevice::ProcessAudioMixing(void* stream, int32 length)
                   speedPercent &= 0xFFFF;
 
 #if SAMPLE_USE_S16
-                  curStreamF[0] += (s16) (*streamBuffer * panR * 0.7);
-                  curStreamF[1] += (s16) (streamBuffer[next] * panL) * 0.7;
+                  curStreamF[0] += (s16) (*streamBuffer * panR);
+                  curStreamF[1] += (s16) (streamBuffer[next] * panL);
 #endif
                   curStreamF += 2;
 
