@@ -720,7 +720,7 @@ bool RenderDevice::InitGraphicsAPI()
 
         screens[s].size.y = videoSettings.pixHeight;
 
-        float viewAspect  = viewSize.x / viewSize.y;
+        float viewAspect = viewSize.x / viewSize.y;
 #if !RETRO_USE_ORIGINAL_CODE
         screenWidth = (int32)((viewAspect * videoSettings.pixHeight) + 3) & 0xFFFFFFFC;
 #else
@@ -873,7 +873,7 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
 
     ShaderEntry *shader = &shaderList[shaderCount];
     shader->linear      = linear;
-    sprintf_s(shader->name, (int32)sizeof(shader->name), "%s", fileName);
+    sprintf_s(shader->name, sizeof(shader->name), "%s", fileName);
 
     const D3D_SHADER_MACRO defines[] = {
 #if RETRO_REV02
@@ -889,7 +889,7 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
     size_t bytecodeSize = 0;
 
     // Try to compile the vertex shader source if it exists
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Shaders/DX11/%s.hlsl", fileName);
+    sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Shaders/DX11/%s.hlsl", fileName);
     InitFileInfo(&info);
     if (LoadFile(&info, fullFilePath, FMODE_RB)) {
         uint8 *fileData = NULL;
@@ -911,6 +911,8 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
         ID3DBlob *errorBlob  = nullptr;
         HRESULT result = D3DCompile(fileData, info.fileSize, fullFilePath, defines, NULL, "VSMain", "vs_5_0", flags, 0, &shaderBlob, &errorBlob);
 
+        RemoveStorageEntry((void **)&fileData);
+
         if (FAILED(result)) {
             if (errorBlob) {
                 PrintLog(PRINT_NORMAL, "ERROR COMPILING VERTEX SHADER: %s", (char *)errorBlob->GetBufferPointer());
@@ -920,7 +922,6 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
             if (shaderBlob)
                 shaderBlob->Release();
 
-            fileData = NULL;
             return;
         }
         else {
@@ -935,19 +936,19 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
                     shader->vertexShaderObject = NULL;
                 }
 
-                fileData = NULL;
                 return;
             }
+#pragma comment( lib, "dxguid.lib")
+            shader->vertexShaderObject->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(fileName), fileName);
         }
 
         bytecode     = shaderBlob->GetBufferPointer();
         bytecodeSize = shaderBlob->GetBufferSize();
-        fileData     = NULL;
     }
     else {
 #endif
         // if the vertex shader source doesn't exist, fall back and try to load the vertex shader bytecode
-        sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Shaders/CSO-DX11/%s.vso", fileName);
+        sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Shaders/CSO-DX11/%s.vso", fileName);
         InitFileInfo(&info);
         if (LoadFile(&info, fullFilePath, FMODE_RB)) {
             uint8 *fileData = NULL;
@@ -961,13 +962,13 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
                     shader->vertexShaderObject = NULL;
                 }
 
-                fileData = NULL;
+                RemoveStorageEntry((void **)&fileData);
                 return;
             }
 
             bytecode     = fileData;
             bytecodeSize = info.fileSize;
-            fileData     = NULL;
+            RemoveStorageEntry((void **)&fileData);
         }
 
 #if !RETRO_USE_ORIGINAL_CODE
@@ -1009,7 +1010,7 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
 
 #if !RETRO_USE_ORIGINAL_CODE
     // Try to compile the pixel shader source if it exists
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Shaders/DX11/%s.hlsl", fileName);
+    sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Shaders/DX11/%s.hlsl", fileName);
     InitFileInfo(&info);
     if (LoadFile(&info, fullFilePath, FMODE_RB)) {
         uint8 *fileData = NULL;
@@ -1052,17 +1053,17 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
                     shader->vertexShaderObject = NULL;
                 }
 
-                fileData = NULL;
+                RemoveStorageEntry((void **)&fileData);
                 return;
             }
         }
 
-        fileData = NULL;
+        RemoveStorageEntry((void **)&fileData);
     }
     else {
 #endif
         // if the pixel shader source doesn't exist, fall back and try to load the pixel shader bytecode
-        sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Shaders/CSO-DX11/%s.fso", fileName);
+        sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Shaders/CSO-DX11/%s.fso", fileName);
         InitFileInfo(&info);
         if (LoadFile(&info, fullFilePath, FMODE_RB)) {
             uint8 *fileData = NULL;
@@ -1076,11 +1077,11 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
                     shader->pixelShaderObject = NULL;
                 }
 
-                fileData = NULL;
+                RemoveStorageEntry((void **)&fileData);
                 return;
             }
 
-            fileData = NULL;
+            RemoveStorageEntry((void **)&fileData);
         }
 
 #if !RETRO_USE_ORIGINAL_CODE
@@ -1140,6 +1141,10 @@ bool RenderDevice::InitShaders()
     }
 
     int32 maxShaders = 0;
+#if RETRO_USE_MOD_LOADER
+    shaderCount = 0;
+#endif
+
     if (videoSettings.shaderSupport) {
         LoadShader("None", false);
         LoadShader("Clean", true);
@@ -1494,7 +1499,8 @@ void RenderDevice::ProcessEvent(MSG Msg)
                 case VK_F1:
                     if (engine.devMenu) {
                         sceneInfo.listPos--;
-                        if (sceneInfo.listPos < sceneInfo.listCategory[sceneInfo.activeCategory].sceneOffsetStart) {
+                        if (sceneInfo.listPos < sceneInfo.listCategory[sceneInfo.activeCategory].sceneOffsetStart
+                            || sceneInfo.listPos >= sceneInfo.listCategory[sceneInfo.activeCategory].sceneOffsetEnd) {
                             sceneInfo.activeCategory--;
                             if (sceneInfo.activeCategory >= sceneInfo.categoryCount) {
                                 sceneInfo.activeCategory = sceneInfo.categoryCount - 1;
@@ -1518,7 +1524,7 @@ void RenderDevice::ProcessEvent(MSG Msg)
                 case VK_F2:
                     if (engine.devMenu) {
                         sceneInfo.listPos++;
-                        if (sceneInfo.listPos >= sceneInfo.listCategory[sceneInfo.activeCategory].sceneOffsetEnd) {
+                        if (sceneInfo.listPos >= sceneInfo.listCategory[sceneInfo.activeCategory].sceneOffsetEnd || sceneInfo.listPos == 0) {
                             sceneInfo.activeCategory++;
                             if (sceneInfo.activeCategory >= sceneInfo.categoryCount) {
                                 sceneInfo.activeCategory = 0;
@@ -1548,9 +1554,21 @@ void RenderDevice::ProcessEvent(MSG Msg)
                     break;
 
 #if !RETRO_USE_ORIGINAL_CODE
+                case VK_F4:
+                    if (engine.devMenu) {
+                        engine.showEntityInfo ^= 1;
+
+                        handledMsg = true;
+                    }
+                    break;
+
                 case VK_F5:
                     if (engine.devMenu) {
                         // Quick-Reload
+#if RETRO_USE_MOD_LOADER
+                        if (GetAsyncKeyState(VK_CONTROL))
+                            RefreshModFolders();
+#endif
 
 #if RETRO_REV0U
                         switch (engine.version) {
@@ -1575,9 +1593,20 @@ void RenderDevice::ProcessEvent(MSG Msg)
                         videoSettings.screenCount++;
                     break;
 
+                case VK_F8:
+                    if (engine.devMenu) {
+                        engine.showUpdateRanges ^= 1;
+
+                        handledMsg = true;
+                    }
+                    break;
+
                 case VK_F9:
-                    if (engine.devMenu)
+                    if (engine.devMenu) {
                         showHitboxes ^= 1;
+
+                        handledMsg = true;
+                    }
                     break;
 
                 case VK_F10:
@@ -1624,12 +1653,12 @@ void RenderDevice::ProcessEvent(MSG Msg)
         case WM_SYSKEYUP: {
             WPARAM activeButtons = Msg.wParam;
             switch (Msg.wParam) {
-                case VK_SHIFT: activeButtons = MapVirtualKey(((Msg.lParam >> 8) & 0xFF), MAPVK_VSC_TO_VK_EX); break;
+                case VK_SHIFT: activeButtons = MapVirtualKey(((Msg.lParam >> 16) & 0xFF), MAPVK_VSC_TO_VK_EX); break;
 
-                case VK_CONTROL: activeButtons = VK_LCONTROL + ((Msg.lParam >> 8) & 1); break;
+                case VK_CONTROL: activeButtons = VK_LCONTROL + ((Msg.lParam >> 24) & 1); break;
 
                 case VK_MENU: // ALT key
-                    activeButtons = VK_LMENU + ((Msg.lParam >> 8) & 1);
+                    activeButtons = VK_LMENU + ((Msg.lParam >> 24) & 1);
                     break;
             }
 
@@ -1958,7 +1987,7 @@ void RenderDevice::SetupVideoTexture_YUV422(int32 width, int32 height, uint8 *yP
             }
 
             pixels = (DWORD *)mappedResource.pData;
-            pitch  = 0; // (rect.Pitch >> 2) - (width >> 1);
+            pitch  = (mappedResource.RowPitch >> 2) - (width >> 1);
             for (int32 y = 0; y < height; ++y) {
                 for (int32 x = 0; x < (width >> 1); ++x) {
                     *pixels++ |= (vPlane[x] << 0) | (uPlane[x] << 8) | 0xFF000000;

@@ -1,10 +1,10 @@
 #include "RSDK/Core/RetroEngine.hpp"
 
+using namespace RSDK;
+
 #if RETRO_REV0U
 #include "Legacy/Scene3DLegacy.cpp"
 #endif
-
-using namespace RSDK;
 
 Model RSDK::modelList[MODEL_COUNT];
 Scene3D RSDK::scene3DList[SCENE3D_COUNT];
@@ -376,10 +376,13 @@ void RSDK::MatrixInverse(Matrix *dest, Matrix *matrix)
     for (int32 i = 0; i < 0x10; ++i) dest->values[i / 4][i % 4] = (int32)inv[i];
 }
 
-uint16 RSDK::LoadMesh(const char *filename, int32 scope)
+uint16 RSDK::LoadMesh(const char *filename, uint8 scope)
 {
+    if (!scope || scope > SCOPE_STAGE)
+        return -1;
+
     char fullFilePath[0x100];
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Meshes/%s", filename);
+    sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Meshes/%s", filename);
 
     RETRO_HASH_MD5(hash);
     GEN_HASH_MD5(fullFilePath, hash);
@@ -464,8 +467,11 @@ uint16 RSDK::LoadMesh(const char *filename, int32 scope)
     }
     return -1;
 }
-uint16 RSDK::Create3DScene(const char *name, uint16 vertexLimit, int32 scope)
+uint16 RSDK::Create3DScene(const char *name, uint16 vertexLimit, uint8 scope)
 {
+    if (!scope || scope > SCOPE_STAGE)
+        return -1;
+
     RETRO_HASH_MD5(hash);
     GEN_HASH_MD5(name, hash);
 
@@ -817,73 +823,78 @@ void RSDK::AddMeshFrameToScene(uint16 modelFrames, uint16 sceneIndex, Animator *
     }
 }
 
-void RSDK::Sort3DDrawList(Scene3D *scn, int32 first, int32 last)
-{
-    if (first < last) {
-        int32 i = first;
-        int32 j = last;
-
-        int32 index = scn->faceBuffer[i].index;
-        int32 depth = scn->faceBuffer[i].depth;
-
-        while (i < j) {
-            while (scn->faceBuffer[j].depth <= depth && i < j) j--;
-            scn->faceBuffer[i].index = scn->faceBuffer[j].index;
-            scn->faceBuffer[i].depth = scn->faceBuffer[j].depth;
-
-            while (scn->faceBuffer[i].depth >= depth && i < j) i++;
-            scn->faceBuffer[j].index = scn->faceBuffer[i].index;
-            scn->faceBuffer[j].depth = scn->faceBuffer[i].depth;
-        }
-        scn->faceBuffer[i].index = index;
-        scn->faceBuffer[i].depth = depth;
-
-        Sort3DDrawList(scn, first, i - 1);
-        Sort3DDrawList(scn, j + 1, last);
-    }
-}
-
 void RSDK::Draw3DScene(uint16 sceneID)
 {
     if (sceneID < SCENE3D_COUNT) {
         Entity *entity = sceneInfo.entity;
         Scene3D *scn   = &scene3DList[sceneID];
 
+        // Setup face buffer.
+        // Each face's depth is an average of the depth of its vertices.
         Scene3DVertex *vertices = scn->vertices;
+        Scene3DFace *faceBuffer = scn->faceBuffer;
+        uint8 *faceVertCounts = scn->faceVertCounts;
 
-        // setup face buffer
         int32 vertIndex = 0;
         for (int32 i = 0; i < scn->faceCount; ++i) {
-            scn->faceBuffer[i].depth = 0;
+            switch (*faceVertCounts) {
+                default:
+                case 1:
+                    faceBuffer->depth = vertices[0].z;
+                    vertices += *faceVertCounts;
+                    break;
 
-            if (scn->faceVertCounts[i] == 4) {
-                scn->faceBuffer[i].depth = vertices[0].z >> 2;
-                scn->faceBuffer[i].depth += vertices[1].z >> 2;
-                scn->faceBuffer[i].depth += vertices[2].z >> 2;
-                scn->faceBuffer[i].depth += vertices[3].z >> 2;
-                vertices += 4;
-            }
-            else if (scn->faceVertCounts[i] == 3) {
-                scn->faceBuffer[i].depth = vertices[0].z >> 1;
-                scn->faceBuffer[i].depth += vertices[1].z >> 1;
-                scn->faceBuffer[i].depth += vertices[2].z >> 1;
-                vertices += 3;
-            }
-            else if (scn->faceVertCounts[i] == 2) {
-                scn->faceBuffer[i].depth = vertices[0].z >> 1;
-                scn->faceBuffer[i].depth += vertices[1].z >> 1;
-                vertices += 2;
-            }
-            else {
-                scn->faceBuffer[i].depth = vertices->z;
-                vertices++;
+                case 2:
+                    faceBuffer->depth = vertices[0].z >> 1;
+                    faceBuffer->depth += vertices[1].z >> 1;
+                    vertices += 2;
+                    break;
+
+                case 3:
+                    faceBuffer->depth = vertices[0].z >> 1;
+                    faceBuffer->depth = (faceBuffer->depth + (vertices[1].z >> 1)) >> 1;
+                    faceBuffer->depth += vertices[2].z >> 1;
+                    vertices += 3;
+                    break;
+
+                case 4:
+                    faceBuffer->depth = vertices[0].z >> 2;
+                    faceBuffer->depth += vertices[1].z >> 2;
+                    faceBuffer->depth += vertices[2].z >> 2;
+                    faceBuffer->depth += vertices[3].z >> 2;
+                    vertices += 4;
+                    break;
             }
 
-            scn->faceBuffer[i].index = vertIndex;
-            vertIndex += scn->faceVertCounts[i];
+            faceBuffer->index = vertIndex;
+            vertIndex += *faceVertCounts;
+
+            ++faceBuffer;
+            ++faceVertCounts;
         }
 
-        Sort3DDrawList(scn, 0, scn->faceCount - 1);
+        // Sort the face buffer. This is needed so that the faces don't overlap each other incorrectly when they're rendered.
+        // This is an insertion sort, taken from here:
+        // https://web.archive.org/web/20110108233032/http://rosettacode.org/wiki/Sorting_algorithms/Insertion_sort#C
+
+        Scene3DFace *a = scn->faceBuffer;
+
+        int i, j;
+        Scene3DFace temp;
+
+        for(i=1; i<scn->faceCount; i++)
+        {
+            temp = a[i];
+            j = i-1;
+            while(j>=0 && a[j].depth < temp.depth)
+            {
+                a[j+1] = a[j];
+                j -= 1;
+            }
+            a[j+1] = temp;
+        }
+
+        // Finally, display the faces.
 
         uint8 *vertCnt = scn->faceVertCounts;
         Vector2 vertPos[4];

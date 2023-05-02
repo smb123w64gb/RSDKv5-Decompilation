@@ -2,6 +2,8 @@
 
 #if RETRO_USE_MOD_LOADER
 
+using namespace RSDK;
+
 #if RETRO_REV0U
 #include "Legacy/ModAPILegacy.cpp"
 #endif
@@ -11,15 +13,35 @@
 #include <stdexcept>
 #include <functional>
 
-#if RETRO_PLATFORM == RETRO_ANDROID
-namespace fs = std::__fs::filesystem;
-#else
+#if RETRO_PLATFORM != RETRO_ANDROID
 namespace fs = std::filesystem;
+#else
+bool fs::exists(fs::path path)
+{
+    auto *jni        = GetJNISetup();
+    jbyteArray array = jni->env->NewByteArray(path.string().length());
+    jni->env->SetByteArrayRegion(array, 0, path.string().length(), (jbyte *)path.string().c_str());
+    return jni->env->CallBooleanMethod(jni->thiz, fsExists, array);
+}
+
+bool fs::is_directory(fs::path path)
+{
+    auto *jni        = GetJNISetup();
+    jbyteArray array = jni->env->NewByteArray(path.string().length());
+    jni->env->SetByteArrayRegion(array, 0, path.string().length(), (jbyte *)path.string().c_str());
+    return jni->env->CallBooleanMethod(jni->thiz, fsIsDir, array);
+}
+
+fs::path_list fs::directory_iterator(fs::path path)
+{
+    auto *jni        = GetJNISetup();
+    jbyteArray array = jni->env->NewByteArray(path.string().length());
+    jni->env->SetByteArrayRegion(array, 0, path.string().length(), (jbyte *)path.string().c_str());
+    return fs::path_list((jobjectArray)jni->env->CallObjectMethod(jni->thiz, fsDirIter, array));
+}
 #endif
 
 #include "iniparser/iniparser.h"
-
-using namespace RSDK;
 
 int32 RSDK::currentObjectID = 0;
 std::vector<ObjectClass *> allocatedInherits;
@@ -63,7 +85,7 @@ std::string trim(const std::string &s)
     return std::string(start, end + 1);
 }
 
-void RSDK::InitModAPI()
+void RSDK::InitModAPI(bool32 getVersion)
 {
     memset(modFunctionTable, 0, sizeof(modFunctionTable));
 
@@ -127,9 +149,58 @@ void RSDK::InitModAPI()
     ADD_MOD_FUNCTION(ModTable_HandleRunState_HighPriority, HandleRunState_HighPriority);
     ADD_MOD_FUNCTION(ModTable_HandleRunState_LowPriority, HandleRunState_LowPriority);
 
+#if RETRO_MOD_LOADER_VER >= 2
+    // Mod Settings (Part 2)
+    ADD_MOD_FUNCTION(ModTable_ForeachSetting, ForeachSetting);
+    ADD_MOD_FUNCTION(ModTable_ForeachSettingCategory, ForeachSettingCategory);
+
+    // Files
+    ADD_MOD_FUNCTION(ModTable_ExcludeFile, ExcludeFile);
+    ADD_MOD_FUNCTION(ModTable_ExcludeAllFiles, ExcludeAllFiles);
+    ADD_MOD_FUNCTION(ModTable_ReloadFile, ReloadFile);
+    ADD_MOD_FUNCTION(ModTable_ReloadAllFiles, ReloadAllFiles);
+
+    // Graphics
+    ADD_MOD_FUNCTION(ModTable_GetSpriteAnimation, GetSpriteAnimation);
+    ADD_MOD_FUNCTION(ModTable_GetSpriteSurface, GetSpriteSurface);
+    ADD_MOD_FUNCTION(ModTable_GetPaletteBank, GetPaletteBank);
+    ADD_MOD_FUNCTION(ModTable_GetActivePaletteBuffer, GetActivePaletteBuffer);
+    ADD_MOD_FUNCTION(ModTable_GetRGB32To16Buffer, GetRGB32To16Buffer);
+    ADD_MOD_FUNCTION(ModTable_GetBlendLookupTable, GetBlendLookupTable);
+    ADD_MOD_FUNCTION(ModTable_GetSubtractLookupTable, GetSubtractLookupTable);
+    ADD_MOD_FUNCTION(ModTable_GetTintLookupTable, GetTintLookupTable);
+    ADD_MOD_FUNCTION(ModTable_GetMaskColor, GetMaskColor);
+    ADD_MOD_FUNCTION(ModTable_GetScanEdgeBuffer, GetScanEdgeBuffer);
+    ADD_MOD_FUNCTION(ModTable_GetCamera, GetCamera);
+    ADD_MOD_FUNCTION(ModTable_GetShader, GetShader);
+    ADD_MOD_FUNCTION(ModTable_GetModel, GetModel);
+    ADD_MOD_FUNCTION(ModTable_GetScene3D, GetScene3D);
+    ADD_MOD_FUNCTION(ModTable_DrawDynamicAniTile, DrawDynamicAniTile);
+
+    // Audio
+    ADD_MOD_FUNCTION(ModTable_GetSfx, GetSfxEntry);
+    ADD_MOD_FUNCTION(ModTable_GetChannel, GetChannel);
+
+    // Objects/Entities
+    ADD_MOD_FUNCTION(ModTable_GetGroupEntities, GetGroupEntities);
+
+    // Collision
+    ADD_MOD_FUNCTION(ModTable_SetPathGripSensors, SetPathGripSensors);
+    ADD_MOD_FUNCTION(ModTable_FloorCollision, FloorCollision);
+    ADD_MOD_FUNCTION(ModTable_LWallCollision, LWallCollision);
+    ADD_MOD_FUNCTION(ModTable_RoofCollision, RoofCollision);
+    ADD_MOD_FUNCTION(ModTable_RWallCollision, RWallCollision);
+    ADD_MOD_FUNCTION(ModTable_FindFloorPosition, FindFloorPosition);
+    ADD_MOD_FUNCTION(ModTable_FindLWallPosition, FindLWallPosition);
+    ADD_MOD_FUNCTION(ModTable_FindRoofPosition, FindRoofPosition);
+    ADD_MOD_FUNCTION(ModTable_FindRWallPosition, FindRWallPosition);
+    ADD_MOD_FUNCTION(ModTable_CopyCollisionMask, CopyCollisionMask);
+    ADD_MOD_FUNCTION(ModTable_GetCollisionInfo, GetCollisionInfo);
+#endif
+
     superLevels.clear();
     inheritLevel = 0;
-    LoadMods();
+    LoadMods(false, getVersion);
 }
 
 void RSDK::SortMods()
@@ -162,7 +233,7 @@ void RSDK::LoadModSettings()
 
 #if RETRO_REV0U
     modSettings.versionOverride = 0;
-    modSettings.forceScripts    = false;
+    modSettings.forceScripts    = customSettings.forceScripts;
 #endif
 
     int32 activeModCount = (int32)ActiveMods().size();
@@ -171,9 +242,9 @@ void RSDK::LoadModSettings()
 
         if (mod->redirectSaveRAM) {
             if (SKU::userFileDir[0])
-                sprintf(customUserFileDir, "%smods/%s/", SKU::userFileDir, mod->id.c_str());
+                sprintf(customUserFileDir, "%smods/%s/", SKU::userFileDir, mod->folderName.c_str());
             else
-                sprintf(customUserFileDir, "mods/%s/", mod->id.c_str());
+                sprintf(customUserFileDir, "mods/%s/", mod->folderName.c_str());
         }
 
         modSettings.redirectSaveRAM |= mod->redirectSaveRAM ? 1 : 0;
@@ -193,7 +264,7 @@ void RSDK::ApplyModChanges()
     uint32 category                      = sceneInfo.activeCategory;
     uint32 scene                         = sceneInfo.listPos;
     dataStorage[DATASET_SFX].usedStorage = 0;
-    RefreshModFolders();
+    RefreshModFolders(true);
     LoadModSettings();
     DetectEngineVersion();
     if (!engine.version)
@@ -231,7 +302,7 @@ void RSDK::ApplyModChanges()
     uint32 category                      = sceneInfo.activeCategory;
     uint32 scene                         = sceneInfo.listPos;
     dataStorage[DATASET_SFX].usedStorage = 0;
-    RefreshModFolders();
+    RefreshModFolders(true);
     LoadModSettings();
     LoadGameConfig();
     sceneInfo.activeCategory = category;
@@ -240,32 +311,125 @@ void RSDK::ApplyModChanges()
     RenderDevice::SetWindowTitle();
 }
 
-void RSDK::ScanModFolder(ModInfo *info)
+void DrawStatus(const char *str)
+{
+    int32 dy = currentScreen->center.y - 32;
+    DrawRectangle(currentScreen->center.x - 128, dy + 52, 0x100, 0x8, 0x80, 0xFF, INK_NONE, true);
+    DrawDevString(str, currentScreen->center.x, dy + 52, ALIGN_CENTER, 0xFFFFFF);
+
+    RenderDevice::CopyFrameBuffer();
+    RenderDevice::FlipScreen();
+}
+
+#if RETRO_RENDERDEVICE_EGL
+// egl devices are slower in I/O so render more increments
+#define BAR_THRESHOLD (10.F)
+#define RENDER_COUNT  (200)
+#else
+#define BAR_THRESHOLD (100.F)
+#define RENDER_COUNT  (200)
+#endif
+
+bool32 RSDK::ScanModFolder(ModInfo *info, const char *targetFile, bool32 fromLoadMod, bool32 loadingBar)
 {
     if (!info)
-        return;
+        return false;
 
-    const std::string modDir = info->path + "/" + info->id;
+    const std::string modDir = info->path;
 
-    info->fileMap.clear();
+    if (!targetFile)
+        info->fileMap.clear();
+
+    std::string targetFileStr = "";
+    if (targetFile) {
+        char pathLower[0x100];
+        memset(pathLower, 0, sizeof(char) * 0x100);
+        for (int32 c = 0; c < strlen(targetFile); ++c) pathLower[c] = tolower(targetFile[c]);
+
+        targetFileStr = std::string(pathLower);
+    }
 
     fs::path dataPath(modDir);
+    int32 dy = currentScreen->center.y - 32;
+    int32 dx = currentScreen->center.x;
+
+    if (targetFile) {
+        if (fs::exists(fs::path(modDir + "/" + targetFileStr))) {
+            info->fileMap.insert(std::pair<std::string, std::string>(targetFileStr, modDir + "/" + targetFileStr));
+            return true;
+        }
+        else
+            return false;
+    }
 
     if (fs::exists(dataPath) && fs::is_directory(dataPath)) {
         try {
+            if (loadingBar) {
+                currentScreen = &screens[0];
+                DrawRectangle(dx - 0x80 + 0x10, dy + 48, 0x100 - 0x20, 0x10, 0x000000, 0xFF, INK_NONE, true);
+                DrawDevString(fromLoadMod ? "Getting count..." : ("Scanning " + info->id + "...").c_str(), currentScreen->center.x, dy + 52, ALIGN_CENTER,
+                            0xFFFFFF);
+                RenderDevice::CopyFrameBuffer();
+                RenderDevice::FlipScreen();
+            }
+
             auto dirIterator = fs::recursive_directory_iterator(dataPath, fs::directory_options::follow_directory_symlink);
+
+            std::vector<fs::directory_entry> files;
+
+            int32 renders = 1;
+            int32 size    = 0;
+
             for (auto dirFile : dirIterator) {
-                if (dirFile.is_regular_file()) {
-                    std::string folderPath = dirFile.path().string().substr(dataPath.string().length() + 1);
-                    std::transform(folderPath.begin(), folderPath.end(), folderPath.begin(),
-                                   [](unsigned char c) { return c == '\\' ? '/' : std::tolower(c); });
-                    info->fileMap.insert(std::pair<std::string, std::string>(folderPath, dirFile.path().string()));
+#if RETRO_PLATFORM != RETRO_ANDROID
+                if (!dirFile.is_directory()) {
+#endif
+                    files.push_back(dirFile);
+
+                    if (loadingBar && ++size >= RENDER_COUNT * renders) {
+                        DrawRectangle(dx - 0x80 + 0x10, dy + 48, 0x100 - 0x20, 0x10, 0x000000, 0xFF, INK_NONE, true);
+                        DrawDevString((std::to_string(size) + " files").c_str(), currentScreen->center.x, dy + 52, ALIGN_CENTER, 0xFFFFFF);
+                        RenderDevice::CopyFrameBuffer();
+                        RenderDevice::FlipScreen();
+                        renders++;
+                    }
+#if RETRO_PLATFORM != RETRO_ANDROID
+                }
+#endif
+            }
+
+            int32 i    = 0;
+            int32 bars = 1;
+
+            for (auto dirFile : files) {
+                std::string folderPath = dirFile.path().string().substr(dataPath.string().length() + 1);
+                std::transform(folderPath.begin(), folderPath.end(), folderPath.begin(),
+                               [](unsigned char c) { return c == '\\' ? '/' : std::tolower(c); });
+
+                info->fileMap.insert(std::pair<std::string, std::string>(folderPath, dirFile.path().string()));
+                if (loadingBar && (size * bars) / BAR_THRESHOLD < ++i) {
+                    DrawRectangle(dx - 0x80 + 0x10, dy + 48, 0x100 - 0x20, 0x10, 0x000000, 0xFF, INK_NONE, true);
+                    DrawRectangle(dx - 0x80 + 0x10 + 2, dy + 50, (int32)((0x100 - 0x20 - 4) * (i / (float)size)), 0x10 - 4, 0x00FF00, 0xFF, INK_NONE,
+                                  true);
+                    while ((size * bars) / BAR_THRESHOLD < i) bars++;
+                    DrawDevString((std::to_string(i) + "/" + std::to_string(size)).c_str(), currentScreen->center.x, dy + 52, ALIGN_CENTER, 0xFFFFFF);
+                    RenderDevice::CopyFrameBuffer();
+                    RenderDevice::FlipScreen();
                 }
             }
         } catch (fs::filesystem_error fe) {
             PrintLog(PRINT_ERROR, "Mod File Scanning Error: %s", fe.what());
         }
     }
+
+    if (loadingBar && fromLoadMod) {
+        DrawRectangle(dx - 0x80 + 0x10, dy + 48, 0x100 - 0x20, 0x10, 0x000080, 0xFF, INK_NONE, true);
+
+        RenderDevice::CopyFrameBuffer();
+        RenderDevice::FlipScreen();
+    }
+
+    return true;
 }
 
 void RSDK::UnloadMods()
@@ -310,7 +474,7 @@ void RSDK::UnloadMods()
 
     // Clear storage
     dataStorage[DATASET_STG].usedStorage = 0;
-    ClearUnusedStorage(DATASET_MUS);
+    DefragmentAndGarbageCollectStorage(DATASET_MUS);
     dataStorage[DATASET_SFX].usedStorage = 0;
     dataStorage[DATASET_STR].usedStorage = 0;
     dataStorage[DATASET_TMP].usedStorage = 0;
@@ -322,7 +486,7 @@ void RSDK::UnloadMods()
 #endif
 }
 
-void RSDK::LoadMods(bool newOnly)
+void RSDK::LoadMods(bool newOnly, bool32 getVersion)
 {
     if (!newOnly) {
         UnloadMods();
@@ -338,7 +502,7 @@ void RSDK::LoadMods(bool newOnly)
 
     using namespace std;
     char modBuf[0x100];
-    sprintf_s(modBuf, (int32)sizeof(modBuf), "%smods/", SKU::userFileDir);
+    sprintf_s(modBuf, sizeof(modBuf), "%smods", SKU::userFileDir);
     fs::path modPath(modBuf);
 
     if (fs::exists(modPath) && fs::is_directory(modPath)) {
@@ -354,13 +518,17 @@ void RSDK::LoadMods(bool newOnly)
 
             for (int32 m = 0; m < c; ++m) {
                 if (newOnly && std::find_if(modList.begin(), modList.end(), [&keys, &m](ModInfo mod) {
-                                   return mod.id == string(keys[m] + 5);
+                                   return mod.folderName == string(keys[m] + 5);
                                }) != modList.end())
                     continue;
                 ModInfo info  = {};
                 bool32 active = iniparser_getboolean(ini, keys[m], false);
-                bool32 loaded = LoadMod(&info, modPath.string(), string(keys[m] + 5), active);
-                if (!loaded) {
+                bool32 loaded = LoadMod(&info, modPath.string(), string(keys[m] + 5), active, getVersion);
+                if (info.id.empty()) {
+                    PrintLog(PRINT_NORMAL, "[MOD] Mod %s doesn't exist!", keys[m] + 5);
+                    continue;
+                }
+                else if (!loaded) {
                     PrintLog(PRINT_NORMAL, "[MOD] Failed to load mod %s.", info.id.c_str(), active ? "Y" : "N");
                     info.active = false;
                 }
@@ -368,6 +536,8 @@ void RSDK::LoadMods(bool newOnly)
                     PrintLog(PRINT_NORMAL, "[MOD] Loaded mod %s! Active: %s", info.id.c_str(), active ? "Y" : "N");
                 modList.push_back(info);
             }
+            delete[] keys;
+            iniparser_freedict(ini);
         }
 
         try {
@@ -375,21 +545,17 @@ void RSDK::LoadMods(bool newOnly)
             for (auto de : rdi) {
                 if (de.is_directory()) {
                     fs::path modDirPath = de.path();
+                    ModInfo info        = {};
+                    std::string folder  = modDirPath.filename().string();
 
-                    ModInfo info = {};
+                    if (std::find_if(modList.begin(), modList.end(), [&folder](ModInfo m) { return m.folderName == folder; }) == modList.end()) {
 
-                    std::string modDir            = modDirPath.string().c_str();
-                    const std::string mod_inifile = modDir + "/mod.ini";
-                    std::string folder            = modDirPath.filename().string();
-
-                    if (std::find_if(modList.begin(), modList.end(), [&folder](ModInfo m) { return m.id == folder; }) == modList.end()) {
-
-                        const std::string modDir = modPath.string() + "/" + modDirPath.filename().string();
+                        const std::string modDir = modPath.string() + "/" + folder;
 
                         FileIO *f = fOpen((modDir + "/mod.ini").c_str(), "r");
                         if (f) {
                             fClose(f);
-                            LoadMod(&info, modPath.string(), modDirPath.filename().string(), false);
+                            LoadMod(&info, modPath.string(), folder, false, getVersion);
                             modList.push_back(info);
                         }
                     }
@@ -399,42 +565,50 @@ void RSDK::LoadMods(bool newOnly)
             PrintLog(PRINT_ERROR, "Mods folder scanning error: %s", fe.what());
         }
     }
+
+    int32 dy = currentScreen->center.y - 32;
+    DrawRectangle(currentScreen->center.x - 128, dy, 0x100, 0x48, 0x80, 0xFF, INK_NONE, true);
+    DrawDevString("Mod loading done!", currentScreen->center.x, dy + 28, ALIGN_CENTER, 0xFFFFFF);
+    RenderDevice::CopyFrameBuffer();
+    RenderDevice::FlipScreen();
+
     LoadModSettings(); // implicit SortMods
 }
 
 void loadCfg(ModInfo *info, std::string path)
 {
-    FileInfo *cfg     = new FileInfo();
-    cfg->externalFile = true;
+    FileInfo cfg;
+    InitFileInfo(&cfg);
+    cfg.externalFile = true;
     // CFG FILE READ
-    if (LoadFile(cfg, path.c_str(), FMODE_RB)) {
-        int32 catCount = ReadInt8(cfg);
+    if (LoadFile(&cfg, path.c_str(), FMODE_RB)) {
+        int32 catCount = ReadInt8(&cfg);
         for (int32 c = 0; c < catCount; ++c) {
             char catBuf[0x100];
-            ReadString(cfg, catBuf);
-            int32 keyCount = ReadInt8(cfg);
+            ReadString(&cfg, catBuf);
+            int32 keyCount = ReadInt8(&cfg);
             for (int32 k = 0; k < keyCount; ++k) {
                 // ReadString except w packing the type bit
-                uint8 size   = ReadInt8(cfg);
+                uint8 size   = ReadInt8(&cfg);
                 char *keyBuf = new char[size & 0x7F];
-                ReadBytes(cfg, keyBuf, size & 0x7F);
+                ReadBytes(&cfg, keyBuf, size & 0x7F);
                 keyBuf[size & 0x7F] = 0;
                 uint8 type          = size & 0x80;
                 if (!type) {
                     char buf[0xFFFF];
-                    ReadString(cfg, buf);
+                    ReadString(&cfg, buf);
                     info->config[catBuf][keyBuf] = buf;
                 }
                 else
-                    info->config[catBuf][keyBuf] = std::to_string(ReadInt32(cfg, false));
+                    info->config[catBuf][keyBuf] = std::to_string(ReadInt32(&cfg, false));
             }
         }
 
-        CloseFile(cfg);
+        CloseFile(&cfg);
     }
 }
 
-bool32 RSDK::LoadMod(ModInfo *info, std::string modsPath, std::string folder, bool32 active)
+bool32 RSDK::LoadMod(ModInfo *info, std::string modsPath, std::string folder, bool32 active, bool32 getVersion)
 {
     if (!info)
         return false;
@@ -444,6 +618,7 @@ bool32 RSDK::LoadMod(ModInfo *info, std::string modsPath, std::string folder, bo
     PrintLog(PRINT_NORMAL, "[MOD] Trying to load mod %s...", folder.c_str());
 
     info->fileMap.clear();
+    info->excludedFiles.clear();
     info->modLogicHandles.clear();
     info->name             = "";
     info->desc             = "";
@@ -458,12 +633,21 @@ bool32 RSDK::LoadMod(ModInfo *info, std::string modsPath, std::string folder, bo
 
     FileIO *f = fOpen((modDir + "/mod.ini").c_str(), "r");
     if (f) {
+        int32 dy = currentScreen->center.y - 32;
+        DrawRectangle(currentScreen->center.x - 128, dy, 0x100, 0x48, 0x80, 0xFF, INK_NONE, true);
+
+        DrawDevString("Loading mod", currentScreen->center.x, dy + 16, ALIGN_CENTER, 0xFFFFFF);
+        DrawDevString((folder + "...").c_str(), currentScreen->center.x, dy + 28, ALIGN_CENTER, 0xFFFFFF);
+
+        DrawStatus("Parsing INI...");
+
         fClose(f);
         auto ini = iniparser_load((modDir + "/mod.ini").c_str());
 
-        info->path   = modsPath;
-        info->id     = folder;
-        info->active = active;
+        info->path       = modDir;
+        info->folderName = folder;
+        info->id         = iniparser_getstring(ini, ":ModID", folder.c_str());
+        info->active     = active;
 
         info->name    = iniparser_getstring(ini, ":Name", "Unnamed Mod");
         info->desc    = iniparser_getstring(ini, ":Description", "");
@@ -495,193 +679,203 @@ bool32 RSDK::LoadMod(ModInfo *info, std::string modsPath, std::string folder, bo
             return true;
 
         // ASSETS
-        ScanModFolder(info);
+        DrawStatus("Scanning mod folder...");
+        ScanModFolder(info, getVersion ? "Data/Game/GameConfig.bin" : nullptr, true);
 
-        // LOGIC
-        std::string logic(iniparser_getstring(ini, ":LogicFile", ""));
-        if (logic.length()) {
-            std::istringstream stream(logic);
-            std::string buf;
-            while (std::getline(stream, buf, ',')) {
-                buf         = trim(buf);
-                bool linked = false;
+        if (!getVersion) {
+            // LOGIC
+            std::string logic(iniparser_getstring(ini, ":LogicFile", ""));
+            if (logic.length()) {
+                std::istringstream stream(logic);
+                std::string buf;
+                while (std::getline(stream, buf, ',')) {
+                    buf = trim(buf);
+                    DrawStatus(("Starting logic" + buf + "...").c_str());
+                    bool linked = false;
 
-                fs::path file(modDir + "/" + buf);
-                Link::Handle linkHandle = Link::Open(file.string().c_str());
+                    fs::path file(modDir + "/" + buf);
+                    Link::Handle linkHandle = Link::Open(file.string().c_str());
 
-                if (linkHandle) {
-                    const ModVersionInfo *modInfo = (const ModVersionInfo *)Link::GetSymbol(linkHandle, "modInfo");
-                    if (!modInfo) {
-                        // PrintLog(PRINT_NORMAL, "[MOD] Failed to load mod %s...", folder.c_str());
-                        PrintLog(PRINT_NORMAL, "[MOD] ERROR: Failed to find modInfo", file.string().c_str());
+                    if (linkHandle) {
+                        modLink linkModLogic = (modLink)Link::GetSymbol(linkHandle, "LinkModLogic");
+                        const ModVersionInfo *modInfo = (const ModVersionInfo *)Link::GetSymbol(linkHandle, "modInfo");
+                        if (!modInfo) {
+                            // PrintLog(PRINT_NORMAL, "[MOD] Failed to load mod %s...", folder.c_str());
+                            PrintLog(PRINT_NORMAL, "[MOD] ERROR: Failed to find modInfo", file.string().c_str());
 
-                        iniparser_freedict(ini);
-                        currentMod = cur;
-                        return false;
-                    }
+                            iniparser_freedict(ini);
+                            currentMod = cur;
+                            return false;
+                        }
 
-                    if (modInfo->engineVer != targetModVersion.engineVer) {
-                        // PrintLog(PRINT_NORMAL, "[MOD] Failed to load mod %s...", folder.c_str());
-                        PrintLog(PRINT_NORMAL, "[MOD] ERROR: Logic file '%s' engineVer %d does not match expected engineVer of %d",
-                                 file.string().c_str(), modInfo->engineVer, targetModVersion.engineVer);
+                        if (modInfo->engineVer != targetModVersion.engineVer) {
+                            // PrintLog(PRINT_NORMAL, "[MOD] Failed to load mod %s...", folder.c_str());
+                            PrintLog(PRINT_NORMAL, "[MOD] ERROR: Logic file '%s' engineVer %d does not match expected engineVer of %d",
+                                     file.string().c_str(), modInfo->engineVer, targetModVersion.engineVer);
 
-                        iniparser_freedict(ini);
-                        currentMod = cur;
-                        return false;
-                    }
+                            iniparser_freedict(ini);
+                            currentMod = cur;
+                            return false;
+                        }
 
-                    if (modInfo->modLoaderVer != targetModVersion.modLoaderVer) {
-                        // PrintLog(PRINT_NORMAL, "[MOD] Failed to load mod %s...", folder.c_str());
-                        PrintLog(PRINT_NORMAL, "[MOD] ERROR: Logic file '%s' modLoaderVer  %d does not match expected modLoaderVer of %d",
-                                 file.string().c_str(), modInfo->modLoaderVer, targetModVersion.modLoaderVer);
-                    }
+                        if (modInfo->modLoaderVer != targetModVersion.modLoaderVer) {
+                            // PrintLog(PRINT_NORMAL, "[MOD] Failed to load mod %s...", folder.c_str());
+                            PrintLog(PRINT_NORMAL, "[MOD] ERROR: Logic file '%s' modLoaderVer  %d does not match expected modLoaderVer of %d",
+                                     file.string().c_str(), modInfo->modLoaderVer, targetModVersion.modLoaderVer);
+                        }
 
-                    modLink linkModLogic = (modLink)Link::GetSymbol(linkHandle, "LinkModLogic");
-                    if (linkModLogic) {
-                        info->linkModLogic.push_back(linkModLogic);
-                        linked = true;
+                        if (linkModLogic) {
+                            info->linkModLogic.push_back(linkModLogic);
+                            linked = true;
+                        }
+                        else {
+                            PrintLog(PRINT_ERROR, "[MOD] ERROR: Failed to find 'LinkModLogic' -> %s", Link::GetError());
+                        }
+                        info->unloadMod = (void (*)())Link::GetSymbol(linkHandle, "UnloadMod");
+                        info->modLogicHandles.push_back(linkHandle);
                     }
                     else {
-                        PrintLog(PRINT_ERROR, "[MOD] ERROR: ailed to find 'LinkModLogic' -> %s", Link::GetError());
+                        PrintLog(PRINT_ERROR, "[MOD] ERROR: Failed to open mod logic file -> %s", Link::GetError());
                     }
-                    info->unloadMod = (void (*)())Link::GetSymbol(linkHandle, "UnloadMod");
-                    info->modLogicHandles.push_back(linkHandle);
+
+                    if (!linked) {
+                        // PrintLog(PRINT_NORMAL, "[MOD] Failed to load mod %s...", folder.c_str());
+                        PrintLog(PRINT_NORMAL, "[MOD] ERROR: Failed to link logic '%s'", file.string().c_str());
+
+                        iniparser_freedict(ini);
+                        currentMod = cur;
+                        return false;
+                    }
+                }
+            }
+
+            // SETTINGS
+            FileIO *set = fOpen((modDir + "/modSettings.ini").c_str(), "r");
+            if (set) {
+                DrawStatus("Reading settings...");
+
+                fClose(set);
+                using namespace std;
+                auto ini  = iniparser_load((modDir + "/modSettings.ini").c_str());
+                int32 sec = iniparser_getnsec(ini);
+                if (sec) {
+                    for (int32 i = 0; i < sec; ++i) {
+                        const char *secn  = iniparser_getsecname(ini, i);
+                        int32 len         = iniparser_getsecnkeys(ini, secn);
+                        const char **keys = new const char *[len];
+                        iniparser_getseckeys(ini, secn, keys);
+                        map<string, string> secset;
+                        for (int32 j = 0; j < len; ++j)
+                            secset.insert(pair<string, string>(keys[j] + strlen(secn) + 1, iniparser_getstring(ini, keys[j], "")));
+                        info->settings.insert(pair<string, map<string, string>>(secn, secset));
+                    }
                 }
                 else {
-                    PrintLog(PRINT_ERROR, "[MOD] ERROR: Failed to open mod logic file -> %s", Link::GetError());
-                }
-
-                if (!linked) {
-                    // PrintLog(PRINT_NORMAL, "[MOD] Failed to load mod %s...", folder.c_str());
-                    PrintLog(PRINT_NORMAL, "[MOD] ERROR: failed to link logic '%s'", file.string().c_str());
-
-                    iniparser_freedict(ini);
-                    currentMod = cur;
-                    return false;
-                }
-            }
-        }
-
-        // SETTINGS
-        FileIO *set = fOpen((modDir + "/modSettings.ini").c_str(), "r");
-        if (set) {
-            fClose(set);
-            using namespace std;
-            auto ini  = iniparser_load((modDir + "/modSettings.ini").c_str());
-            int32 sec = iniparser_getnsec(ini);
-            if (sec) {
-                for (int32 i = 0; i < sec; ++i) {
-                    const char *secn  = iniparser_getsecname(ini, i);
-                    int32 len         = iniparser_getsecnkeys(ini, secn);
-                    const char **keys = new const char *[len];
-                    iniparser_getseckeys(ini, secn, keys);
+                    // either you use categories or you don't, i don't make the rules
                     map<string, string> secset;
-                    for (int32 j = 0; j < len; ++j)
-                        secset.insert(pair<string, string>(keys[j] + strlen(secn) + 1, iniparser_getstring(ini, keys[j], "")));
-                    info->settings.insert(pair<string, map<string, string>>(secn, secset));
+                    for (int32 j = 0; j < ini->n; ++j) secset.insert(pair<string, string>(ini->key[j] + 1, ini->val[j]));
+                    info->settings.insert(pair<string, map<string, string>>("", secset));
                 }
+                iniparser_freedict(ini);
             }
-            else {
-                // either you use categories or you don't, i don't make the rules
-                map<string, string> secset;
-                for (int32 j = 0; j < ini->n; ++j) secset.insert(pair<string, string>(ini->key[j] + 1, ini->val[j]));
-                info->settings.insert(pair<string, map<string, string>>("", secset));
-            }
-            iniparser_freedict(ini);
-        }
-        // CONFIG
-        loadCfg(info, modDir + "/modConfig.cfg");
+            // CONFIG
+            loadCfg(info, modDir + "/modConfig.cfg");
 
-        std::string cfg(iniparser_getstring(ini, ":ConfigFile", ""));
-        bool saveCfg = false;
-        if (cfg.length() && info->active) {
-            std::istringstream stream(cfg);
-            std::string buf;
-            while (std::getline(stream, buf, ',')) {
-                buf        = trim(buf);
-                int32 mode = 0;
-                fs::path file;
-                if (MODAPI_ENDS_WITH(".ini")) {
-                    file = fs::path(modDir + "/" + buf + ".ini");
-                    mode = 1;
-                }
-                else if (MODAPI_ENDS_WITH(".cfg")) {
-                    file = fs::path(modDir + "/" + buf + ".cfg");
-                    mode = 2;
-                }
+            std::string cfg(iniparser_getstring(ini, ":ConfigFile", ""));
+            bool saveCfg = false;
+            if (cfg.length() && info->active) {
+                std::istringstream stream(cfg);
+                std::string buf;
+                while (std::getline(stream, buf, ',')) {
+                    buf = trim(buf);
+                    DrawStatus(("Reading config " + buf + "...").c_str());
 
-                if (!mode) {
-                    file = fs::path(modDir + "/" + buf + ".ini");
-                    if (fs::exists(file))
+                    int32 mode = 0;
+                    fs::path file;
+                    if (MODAPI_ENDS_WITH(".ini")) {
+                        file = fs::path(modDir + "/" + buf + ".ini");
                         mode = 1;
-                }
-                if (!mode) {
-                    file = fs::path(modDir + "/" + buf + ".cfg");
-                    if (fs::exists(file))
+                    }
+                    else if (MODAPI_ENDS_WITH(".cfg")) {
+                        file = fs::path(modDir + "/" + buf + ".cfg");
                         mode = 2;
-                }
+                    }
 
-                // if fail just free do nothing
-                if (!mode)
-                    continue;
+                    if (!mode) {
+                        file = fs::path(modDir + "/" + buf + ".ini");
+                        if (fs::exists(file))
+                            mode = 1;
+                    }
+                    if (!mode) {
+                        file = fs::path(modDir + "/" + buf + ".cfg");
+                        if (fs::exists(file))
+                            mode = 2;
+                    }
 
-                if (mode == 1) {
-                    FileIO *set = fOpen(file.string().c_str(), "r");
-                    if (set) {
-                        saveCfg = true;
-                        fClose(set);
-                        using namespace std;
-                        auto ini  = iniparser_load(file.string().c_str());
-                        int32 sec = iniparser_getnsec(ini);
-                        for (int32 i = 0; i < sec; ++i) {
-                            const char *secn  = iniparser_getsecname(ini, i);
-                            int32 len         = iniparser_getsecnkeys(ini, secn);
-                            const char **keys = new const char *[len];
-                            iniparser_getseckeys(ini, secn, keys);
-                            for (int32 j = 0; j < len; ++j) info->config[secn][keys[j] + strlen(secn) + 1] = iniparser_getstring(ini, keys[j], "");
+                    // if fail just free do nothing
+                    if (!mode)
+                        continue;
+
+                    if (mode == 1) {
+                        FileIO *set = fOpen(file.string().c_str(), "r");
+                        if (set) {
+                            saveCfg = true;
+                            fClose(set);
+                            using namespace std;
+                            auto ini  = iniparser_load(file.string().c_str());
+                            int32 sec = iniparser_getnsec(ini);
+                            for (int32 i = 0; i < sec; ++i) {
+                                const char *secn  = iniparser_getsecname(ini, i);
+                                int32 len         = iniparser_getsecnkeys(ini, secn);
+                                const char **keys = new const char *[len];
+                                iniparser_getseckeys(ini, secn, keys);
+                                for (int32 j = 0; j < len; ++j)
+                                    info->config[secn][keys[j] + strlen(secn) + 1] = iniparser_getstring(ini, keys[j], "");
+                            }
+                            iniparser_freedict(ini);
                         }
-                        iniparser_freedict(ini);
                     }
+                    else if (mode == 2)
+                        loadCfg(info, file.string());
                 }
-                else if (mode == 2)
-                    loadCfg(info, file.string());
             }
-        }
 
-        if (saveCfg && info->config.size()) {
-            FileIO *cfg = fOpen((modDir + "/modConfig.cfg").c_str(), "wb");
-            uint8 ct    = info->config.size();
-            fWrite(&ct, 1, 1, cfg);
-            for (auto kv : info->config) {
-                if (!kv.first.length())
-                    continue; // don't save no-categories
-                uint8 len = kv.first.length();
-                fWrite(&len, 1, 1, cfg);
-                WriteText(cfg, kv.first.c_str());
-                uint8 kt = kv.second.size();
-                fWrite(&kt, 1, 1, cfg);
-                for (auto kkv : kv.second) {
-                    uint8 len    = (uint8)(kkv.first.length()) & 0x7F;
-                    bool32 isint = false;
-                    int32 r      = 0;
-                    try {
-                        r     = std::stoi(kkv.second, nullptr, 0);
-                        isint = true;
-                        len |= 0x80;
-                    } catch (...) {
-                    }
+            if (saveCfg && info->config.size()) {
+                DrawStatus("Saving config...");
+                FileIO *cfg = fOpen((modDir + "/modConfig.cfg").c_str(), "wb");
+                uint8 ct    = info->config.size();
+                fWrite(&ct, 1, 1, cfg);
+                for (auto kv : info->config) {
+                    if (!kv.first.length())
+                        continue; // don't save no-categories
+                    uint8 len = kv.first.length();
                     fWrite(&len, 1, 1, cfg);
-                    WriteText(cfg, kkv.first.c_str());
-                    if (isint)
-                        fWrite(&r, sizeof(int32), 1, cfg);
-                    else {
-                        uint8 len = kkv.second.length();
+                    WriteText(cfg, kv.first.c_str());
+                    uint8 kt = kv.second.size();
+                    fWrite(&kt, 1, 1, cfg);
+                    for (auto kkv : kv.second) {
+                        uint8 len    = (uint8)(kkv.first.length()) & 0x7F;
+                        bool32 isint = false;
+                        int32 r      = 0;
+                        try {
+                            r     = std::stoi(kkv.second, nullptr, 0);
+                            isint = true;
+                            len |= 0x80;
+                        } catch (...) {
+                        }
                         fWrite(&len, 1, 1, cfg);
-                        WriteText(cfg, kkv.second.c_str());
+                        WriteText(cfg, kkv.first.c_str());
+                        if (isint)
+                            fWrite(&r, sizeof(int32), 1, cfg);
+                        else {
+                            uint8 len = kkv.second.length();
+                            fWrite(&len, 1, 1, cfg);
+                            WriteText(cfg, kkv.second.c_str());
+                        }
                     }
                 }
+                fClose(cfg);
             }
-            fClose(cfg);
         }
 
         iniparser_freedict(ini);
@@ -695,7 +889,7 @@ void RSDK::SaveMods()
 {
     ModInfo *cur = currentMod;
     char modBuf[0x100];
-    sprintf_s(modBuf, (int32)sizeof(modBuf), "%smods/", SKU::userFileDir);
+    sprintf_s(modBuf, sizeof(modBuf), "%smods/", SKU::userFileDir);
     fs::path modPath(modBuf);
 
     SortMods();
@@ -711,7 +905,7 @@ void RSDK::SaveMods()
         for (int32 m = 0; m < modList.size(); ++m) {
             currentMod = &modList[m];
             SaveSettings();
-            WriteText(file, "%s=%c\n", currentMod->id.c_str(), currentMod->active ? 'y' : 'n');
+            WriteText(file, "%s=%c\n", currentMod->folderName.c_str(), currentMod->active ? 'y' : 'n');
         }
         fClose(file);
     }
@@ -734,11 +928,11 @@ bool32 RSDK::LoadModInfo(const char *id, String *name, String *description, Stri
 {
     if (!id) { // NULL == "Internal" Logic
         if (name)
-            InitString(name, gameVerInfo.gameTitle, false);
+            InitString(name, gameVerInfo.gameTitle, 0);
         if (description)
-            InitString(description, gameVerInfo.gameSubtitle, false);
+            InitString(description, gameVerInfo.gameSubtitle, 0);
         if (version)
-            InitString(version, gameVerInfo.version, false);
+            InitString(version, gameVerInfo.version, 0);
         if (active)
             *active = true;
 
@@ -746,11 +940,11 @@ bool32 RSDK::LoadModInfo(const char *id, String *name, String *description, Stri
     }
     else if (!strlen(id) && currentMod) { // "" == Current Mod
         if (name)
-            InitString(name, (char *)currentMod->name.c_str(), false);
+            InitString(name, currentMod->name.c_str(), 0);
         if (description)
-            InitString(description, (char *)currentMod->desc.c_str(), false);
+            InitString(description, currentMod->desc.c_str(), 0);
         if (version)
-            InitString(version, (char *)currentMod->version.c_str(), false);
+            InitString(version, currentMod->version.c_str(), 0);
         if (active)
             *active = currentMod->active;
 
@@ -760,11 +954,11 @@ bool32 RSDK::LoadModInfo(const char *id, String *name, String *description, Stri
     for (int32 m = 0; m < modList.size(); ++m) {
         if (modList[m].id == id) {
             if (name)
-                InitString(name, (char *)modList[m].name.c_str(), false);
+                InitString(name, modList[m].name.c_str(), 0);
             if (description)
-                InitString(description, (char *)modList[m].desc.c_str(), false);
+                InitString(description, modList[m].desc.c_str(), 0);
             if (version)
-                InitString(version, (char *)modList[m].version.c_str(), false);
+                InitString(version, modList[m].version.c_str(), 0);
             if (active)
                 *active = modList[m].active;
 
@@ -810,7 +1004,7 @@ bool32 RSDK::ForeachModID(String *id)
         return false;
     }
     string set = modList[foreachStackPtr->id].id;
-    InitString(id, (char *)set.c_str(), (int32)set.length());
+    InitString(id, set.c_str(), 0);
     return true;
 }
 
@@ -861,22 +1055,6 @@ void *RSDK::GetPublicFunction(const char *id, const char *functionName)
     return NULL;
 }
 
-void RSDK::GetModPath(const char *id, String *result)
-{
-    int32 m;
-    for (m = 0; m < modList.size(); ++m) {
-        if (modList[m].active && modList[m].id == id)
-            break;
-    }
-
-    if (m == modList.size())
-        return;
-
-    char buf[0x200];
-    sprintf_s(buf, (int32)sizeof(buf), "%smods/%s", SKU::userFileDir, id);
-    InitString(result, buf, (int32)strlen(buf));
-}
-
 std::string GetModPath_i(const char *id)
 {
     int32 m;
@@ -888,7 +1066,17 @@ std::string GetModPath_i(const char *id)
     if (m == modList.size())
         return std::string();
 
-    return std::string(SKU::userFileDir) + "mods/" + id;
+    return modList[m].path;
+}
+
+void RSDK::GetModPath(const char *id, String *result)
+{
+    std::string modPath = GetModPath_i(id);
+
+    if (modPath.empty())
+        return;
+
+    InitString(result, modPath.c_str(), 0);
 }
 
 std::string GetModSettingsValue(const char *id, const char *key)
@@ -1004,7 +1192,7 @@ void RSDK::GetSettingsString(const char *id, const char *key, String *result, co
     }
     else if (!strlen(id)) {
         if (!currentMod) {
-            InitString(result, (char *)fallback, (int32)strlen(fallback));
+            InitString(result, fallback, 0);
             return;
         }
 
@@ -1015,10 +1203,10 @@ void RSDK::GetSettingsString(const char *id, const char *key, String *result, co
     if (!v.length()) {
         if (currentMod->id == id)
             SetSettingsString(key, result);
-        InitString(result, (char *)fallback, (int32)strlen(fallback));
+        InitString(result, fallback, 0);
         return;
     }
-    InitString(result, (char *)v.c_str(), (int32)v.length());
+    InitString(result, v.c_str(), 0);
 }
 
 std::string GetNidConfigValue(const char *key)
@@ -1081,10 +1269,10 @@ void RSDK::GetConfigString(const char *key, String *result, const char *fallback
 {
     std::string v = GetNidConfigValue(key);
     if (!v.length()) {
-        InitString(result, (char *)fallback, (int32)strlen(fallback));
+        InitString(result, fallback, 0);
         return;
     }
-    InitString(result, (char *)v.c_str(), (int32)v.length());
+    InitString(result, v.c_str(), 0);
 }
 
 bool32 RSDK::ForeachConfigCategory(String *category)
@@ -1124,7 +1312,7 @@ bool32 RSDK::ForeachConfigCategory(String *category)
         foreachStackPtr--;
         return false;
     }
-    InitString(category, (char *)cat.c_str(), (int32)cat.length());
+    InitString(category, cat.c_str(), 0);
     return true;
 }
 
@@ -1171,9 +1359,141 @@ bool32 RSDK::ForeachConfig(String *config)
         return false;
     }
     string r = cat + ":" + key;
-    InitString(config, (char *)r.c_str(), (int32)r.length());
+    InitString(config, r.c_str(), 0);
     return true;
 }
+
+#if RETRO_MOD_LOADER_VER >= 2
+bool32 RSDK::ForeachSettingCategory(const char *id, String *category)
+{
+    if (!id) {
+        // TODO: allow user to get values from settings.ini?
+    }
+    else if (!strlen(id)) {
+        if (!currentMod)
+            return false;
+
+        id = currentMod->id.c_str();
+    }
+
+    if (!category)
+        return false;
+
+    int32 m;
+    for (m = 0; m < modList.size(); ++m) {
+        if (modList[m].active && modList[m].id == id)
+            break;
+    }
+
+    if (m == modList.size())
+        return false;
+
+    ModInfo *mod = &modList[m];
+
+    using namespace std;
+    if (!mod->settings.size())
+        return false;
+
+    if (category->chars)
+        ++foreachStackPtr->id;
+    else {
+        ++foreachStackPtr;
+        foreachStackPtr->id = 0;
+    }
+    int32 sid = 0;
+    string cat;
+    bool32 set = false;
+    if (mod->settings[""].size() && foreachStackPtr->id == sid++) {
+        set = true;
+        cat = "";
+    }
+    if (!set) {
+        for (pair<string, map<string, string>> kv : mod->settings) {
+            if (!kv.first.length())
+                continue;
+            if (kv.second.size() && foreachStackPtr->id == sid++) {
+                set = true;
+                cat = kv.first;
+                break;
+            }
+        }
+    }
+    if (!set) {
+        foreachStackPtr--;
+        return false;
+    }
+    InitString(category, cat.c_str(), 0);
+    return true;
+}
+
+bool32 RSDK::ForeachSetting(const char *id, String *setting)
+{
+    if (!id) {
+        // TODO: allow user to get values from settings.ini?
+    }
+    else if (!strlen(id)) {
+        if (!currentMod)
+            return false;
+
+        id = currentMod->id.c_str();
+    }
+
+    if (!setting)
+        return false;
+    using namespace std;
+    if (!currentMod->settings.size())
+        return false;
+
+    int32 m;
+    for (m = 0; m < modList.size(); ++m) {
+        if (modList[m].active && modList[m].id == id)
+            break;
+    }
+
+    if (m == modList.size())
+        return false;
+
+    ModInfo *mod = &modList[m];
+
+    if (setting->chars)
+        ++foreachStackPtr->id;
+    else {
+        ++foreachStackPtr;
+        foreachStackPtr->id = 0;
+    }
+    int32 sid = 0;
+    string key, cat;
+    if (mod->settings[""].size()) {
+        for (pair<string, string> pair : mod->settings[""]) {
+            if (foreachStackPtr->id == sid++) {
+                cat = "";
+                key = pair.first;
+                break;
+            }
+        }
+    }
+    if (!key.length()) {
+        for (pair<string, map<string, string>> kv : mod->settings) {
+            if (!kv.first.length())
+                continue;
+            for (pair<string, string> pair : kv.second) {
+                if (foreachStackPtr->id == sid++) {
+                    cat = kv.first;
+                    key = pair.first;
+                    break;
+                }
+            }
+        }
+    }
+    if (!key.length()) {
+        foreachStackPtr--;
+        return false;
+    }
+    string r = cat + ":" + key;
+    InitString(setting, r.c_str(), 0);
+    return true;
+}
+#endif
 
 void SetModSettingsValue(const char *key, std::string val)
 {
@@ -1486,13 +1806,13 @@ void RSDK::GetAchievementInfo(uint32 id, String *name, String *description, Stri
         return;
 
     if (name)
-        InitString(name, (char *)achievementList[id].name.c_str(), 0);
+        InitString(name, achievementList[id].name.c_str(), 0);
 
     if (description)
-        InitString(description, (char *)achievementList[id].description.c_str(), 0);
+        InitString(description, achievementList[id].description.c_str(), 0);
 
     if (identifer)
-        InitString(identifer, (char *)achievementList[id].identifier.c_str(), 0);
+        InitString(identifer, achievementList[id].identifier.c_str(), 0);
 
     if (achieved)
         *achieved = achievementList[id].achieved;
@@ -1559,4 +1879,151 @@ void RSDK::RegisterStateHook(void (*state)(), bool32 (*hook)(bool32 skippedState
 
     stateHookList.push_back(stateHook);
 }
+
+#if RETRO_MOD_LOADER_VER >= 2
+
+// Files
+bool32 RSDK::ExcludeFile(const char *id, const char *path)
+{
+    if (!id)
+        return false;
+
+    if (!strlen(id) && currentMod)
+        id = currentMod->id.c_str();
+
+    int32 m;
+    for (m = 0; m < modList.size(); ++m) {
+        if (modList[m].active && modList[m].id == id)
+            break;
+    }
+
+    if (m == modList.size())
+        return false;
+
+    char pathLower[0x100];
+    memset(pathLower, 0, sizeof(pathLower));
+    for (int32 c = 0; c < strlen(path); ++c) pathLower[c] = tolower(path[c]);
+
+    auto &excludeList = modList[m].excludedFiles;
+    if (std::find(excludeList.begin(), excludeList.end(), pathLower) == excludeList.end()) {
+        excludeList.push_back(std::string(pathLower));
+
+        return true;
+    }
+
+    return false;
+}
+bool32 RSDK::ExcludeAllFiles(const char *id)
+{
+    if (!id)
+        return false;
+
+    if (!strlen(id) && currentMod)
+        id = currentMod->id.c_str();
+
+    int32 m;
+    for (m = 0; m < modList.size(); ++m) {
+        if (modList[m].active && modList[m].id == id)
+            break;
+    }
+
+    if (m == modList.size())
+        return false;
+
+    auto &excludeList = modList[m].excludedFiles;
+    for (auto file : modList[m].fileMap) {
+        excludeList.push_back(file.first);
+    }
+
+    modList[m].fileMap.clear();
+
+    return true;
+}
+bool32 RSDK::ReloadFile(const char *id, const char *path)
+{
+    if (!id)
+        return false;
+
+    if (!strlen(id) && currentMod)
+        id = currentMod->id.c_str();
+
+    int32 m;
+    for (m = 0; m < modList.size(); ++m) {
+        if (modList[m].active && modList[m].id == id)
+            break;
+    }
+
+    if (m == modList.size())
+        return false;
+
+    char pathLower[0x100];
+    memset(pathLower, 0, sizeof(pathLower));
+    for (int32 c = 0; c < strlen(path); ++c) pathLower[c] = tolower(path[c]);
+
+    auto &excludeList = modList[m].excludedFiles;
+    if (std::find(excludeList.begin(), excludeList.end(), pathLower) != excludeList.end()) {
+        excludeList.erase(std::remove(excludeList.begin(), excludeList.end(), pathLower), excludeList.end());
+
+        return true;
+    }
+
+    ScanModFolder(&modList[m], path);
+
+    return true;
+}
+bool32 RSDK::ReloadAllFiles(const char *id)
+{
+    if (!id)
+        return false;
+
+    if (!strlen(id) && currentMod)
+        id = currentMod->id.c_str();
+
+    int32 m;
+    for (m = 0; m < modList.size(); ++m) {
+        if (modList[m].active && modList[m].id == id)
+            break;
+    }
+
+    if (m == modList.size())
+        return false;
+
+    modList[m].excludedFiles.clear();
+    ScanModFolder(&modList[m]);
+
+    return true;
+}
+
+// Objects & Entities
+bool32 RSDK::GetGroupEntities(uint16 group, void **entity)
+{
+    if (group >= TYPEGROUP_COUNT)
+        return false;
+
+    if (!entity)
+        return false;
+
+    if (*entity) {
+        ++foreachStackPtr->id;
+    }
+    else {
+        foreachStackPtr++;
+        foreachStackPtr->id = 0;
+    }
+
+    for (Entity *nextEntity = &objectEntityList[typeGroups[group].entries[foreachStackPtr->id]]; foreachStackPtr->id < typeGroups[group].entryCount;
+         ++foreachStackPtr->id, nextEntity = &objectEntityList[typeGroups[group].entries[foreachStackPtr->id]]) {
+        if (nextEntity->group == group) {
+            *entity = nextEntity;
+            return true;
+        }
+    }
+
+    foreachStackPtr--;
+
+    return false;
+}
+
+#endif
+
 #endif

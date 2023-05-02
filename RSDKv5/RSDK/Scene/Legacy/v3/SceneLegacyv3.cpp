@@ -2,7 +2,7 @@
 int32 RSDK::Legacy::v3::yScrollA    = 0;
 int32 RSDK::Legacy::v3::yScrollB    = SCREEN_YSIZE;
 int32 RSDK::Legacy::v3::xScrollA    = 0;
-int32 RSDK::Legacy::v3::xScrollB    = SCREEN_XSIZE;
+int32 RSDK::Legacy::v3::xScrollB    = Legacy::SCREEN_XSIZE;
 int32 RSDK::Legacy::v3::yScrollMove = 0;
 
 #if RETRO_USE_MOD_LOADER
@@ -85,7 +85,8 @@ void RSDK::Legacy::v3::ProcessStage()
             sceneInfo.currentScreenID = 0;
             currentScreen             = screens;
 #if RETRO_USE_MOD_LOADER
-            RefreshModFolders();
+            if (devMenu.modsChanged)
+                RefreshModFolders();
 #endif
             ResetBackgroundSettings();
             LoadStageFiles();
@@ -248,6 +249,7 @@ void RSDK::Legacy::v3::ProcessStage()
                 DrawObjectList(3);
                 DrawObjectList(4);
                 DrawObjectList(5);
+                DrawObjectList(7); // ???
                 DrawObjectList(6);
 
 #if !RETRO_USE_ORIGINAL_CODE

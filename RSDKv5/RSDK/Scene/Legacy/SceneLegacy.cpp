@@ -27,8 +27,8 @@ int32 RSDK::Legacy::waterDrawPos  = 0;
 int32 RSDK::Legacy::newXBoundary2 = 0;
 int32 RSDK::Legacy::newYBoundary2 = 0;
 
-int32 RSDK::Legacy::SCREEN_SCROLL_LEFT  = SCREEN_CENTERX - 8;
-int32 RSDK::Legacy::SCREEN_SCROLL_RIGHT = SCREEN_CENTERX + 8;
+int32 RSDK::Legacy::SCREEN_SCROLL_LEFT  = Legacy::SCREEN_CENTERX - 8;
+int32 RSDK::Legacy::SCREEN_SCROLL_RIGHT = Legacy::SCREEN_CENTERX + 8;
 
 int32 RSDK::Legacy::lastYSize = -1;
 int32 RSDK::Legacy::lastXSize = -1;
@@ -314,8 +314,10 @@ void RSDK::Legacy::LoadStageGIFFile()
             SetPaletteEntry(-1, c, red, green, blue);
         }
 
+#if RETRO_USE_ORIGINAL_CODE
         tileset.palette = NULL;
         tileset.decoder = NULL;
+#endif
         tileset.pixels  = NULL;
 
         tileset.Close();

@@ -119,7 +119,7 @@ struct VideoSettings {
     int32 shaderID;
     int32 screenCount;
     uint32 dimTimer;
-    int32 dimLimit;
+    uint32 dimLimit;
     float dimMax;
     float dimPercent;
     float viewportW;
@@ -207,6 +207,7 @@ public:
     static void UpdateFPSCap();
 
     // Public since it's needed for the ModAPI
+    static bool InitShaders();
     static void LoadShader(const char *fileName, bool32 linear);
 
     // ====================
@@ -232,7 +233,6 @@ public:
     static float2 viewSize;
 
 private:
-    static bool InitShaders();
     static bool SetupRendering();
     static void InitVertexBuffer();
     static bool InitGraphicsAPI();
@@ -244,12 +244,12 @@ private:
 #include "DX9/DX9RenderDevice.hpp"
 #elif RETRO_RENDERDEVICE_DIRECTX11
 #include "DX11/DX11RenderDevice.hpp"
-#elif RETRO_RENDERDEVICE_NX
-#include "NX/NXRenderDevice.hpp"
 #elif RETRO_RENDERDEVICE_SDL2
 #include "SDL2/SDL2RenderDevice.hpp"
 #elif RETRO_RENDERDEVICE_GLFW
 #include "GLFW/GLFWRenderDevice.hpp"
+#elif RETRO_RENDERDEVICE_VK
+#include "Vulkan/VulkanRenderDevice.hpp"
 #elif RETRO_RENDERDEVICE_EGL
 #include "EGL/EGLRenderDevice.hpp"
 #elif RETRO_RENDERDEVICE_CTR
@@ -370,7 +370,7 @@ inline void SetDrawGroupProperties(uint8 drawGroup, bool32 sorted, void (*hookCB
     }
 }
 
-void SwapDrawListEntries(uint8 drawGroup, uint16 slot1, uint16 slot2, int32 count);
+void SwapDrawListEntries(uint8 drawGroup, uint16 slot1, uint16 slot2, uint16 count);
 
 void FillScreen(uint32 color, int32 alphaR, int32 alphaG, int32 alphaB);
 
@@ -393,7 +393,7 @@ void DrawDeformedSprite(uint16 sheetID, int32 inkEffect, int32 alpha);
 void DrawTile(uint16 *tileInfo, int32 countX, int32 countY, Vector2 *position, Vector2 *offset, bool32 screenRelative);
 void DrawAniTile(uint16 sheetID, uint16 tileIndex, uint16 srcX, uint16 srcY, uint16 width, uint16 height);
 
-#if RETRO_REV0U
+#if RETRO_REV0U || RETRO_USE_MOD_LOADER
 inline void DrawDynamicAniTile(Animator *animator, uint16 tileIndex)
 {
     if (animator->frames) {

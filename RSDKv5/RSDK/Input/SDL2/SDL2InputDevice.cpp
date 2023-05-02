@@ -182,7 +182,7 @@ void RSDK::SKU::InputDeviceSDL::CloseDevice()
     this->controllerPtr = NULL;
 }
 
-RSDK::SKU::InputDeviceSDL *RSDK::SKU::InitSDL2InputDevice(uint32 id, uint8 controllerID)
+RSDK::SKU::InputDeviceSDL *RSDK::SKU::InitSDL2InputDevice(uint32 id, SDL_GameController *game_controller)
 {
     if (inputDeviceCount >= INPUTDEVICE_COUNT)
         return NULL;
@@ -197,23 +197,25 @@ RSDK::SKU::InputDeviceSDL *RSDK::SKU::InitSDL2InputDevice(uint32 id, uint8 contr
 
     InputDeviceSDL *device = (InputDeviceSDL *)inputDeviceList[inputDeviceCount];
 
-    device->controllerPtr = SDL_GameControllerOpen(controllerID);
-
-    const char *name = SDL_GameControllerName(device->controllerPtr);
+    device->controllerPtr = game_controller;
 
     device->swapABXY     = false;
     uint8 controllerType = DEVICE_XBOX;
 
-    if (strstr(name, "Xbox"))
-        controllerType = DEVICE_XBOX;
-    else if (strstr(name, "PS4") || strstr(name, "PS5"))
-        controllerType = DEVICE_PS4;
-    else if (strstr(name, "Nintendo") || strstr(name, "Switch") || strstr(name, "Wii U")) {
-        controllerType   = DEVICE_SWITCH_PRO;
-        device->swapABXY = true;
+    const char *name = SDL_GameControllerName(device->controllerPtr);
+
+    if (name != NULL) {
+        if (strstr(name, "Xbox"))
+            controllerType = DEVICE_XBOX;
+        else if (strstr(name, "Playstation") || strstr(name, "PS3") || strstr(name, "PS4") || strstr(name, "PS5"))
+            controllerType = DEVICE_PS4;
+        else if (strstr(name, "Switch") || strstr(name, "Wii U")) {
+            controllerType   = DEVICE_SWITCH_PRO;
+            device->swapABXY = true;
+        }
+        else if (strstr(name, "Saturn"))
+            controllerType = DEVICE_SATURN;
     }
-    else if (strstr(name, "Saturn"))
-        controllerType = DEVICE_SATURN;
 
     device->active      = true;
     device->disabled    = false;
@@ -235,37 +237,9 @@ void RSDK::SKU::InitSDL2InputAPI()
 {
     SDL_InitSubSystem(SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC);
 
-    return;
-
-    // TODO: this
-    for (int32 g = 0; g < gamePadCount; ++g) {
-        char mappingBuffer[0x100];
-
-        sprintf_s(mappingBuffer, sizeof(mappingBuffer),
-                  "%d,%s,"
-                  "a:b1,b:b2,y:b3,x:b0,start:b9,guide:b12,back:b8,"
-                  "dpup:hI%f,dpleft:h%f,dpdown:h%f,dpright:h%f,"
-                  "leftshoulder:b4,rightshoulder:b5,leftstick:b10,rightstick:b11,"
-                  "leftx:a0,lefty:a1,rightx:a2,righty:a3,lefttrigger:b6,righttrigger:b7",
-                  gamePadMappings[g].productID, gamePadMappings[g].name, INPUT_DEADZONE, INPUT_DEADZONE, INPUT_DEADZONE, INPUT_DEADZONE);
-
-        if (SDL_GameControllerAddMapping(mappingBuffer) >= 0) {
-            // char deviceName[0x100];
-            // memset(deviceName, 0, sizeof(deviceName));
-            //
-            // uint32 id;
-            // GenerateHashCRC(&id, deviceName);
-            // device = InitSDL2InputDevice(id);
-            //
-            // device->gamepadType |= gamePadMappings[g].type;
-            // memcpy(device->buttons, gamePadMappings[g].buttons, sizeof(device->buttons));
-            // PrintLog(PRINT_NORMAL, "%s Detected - Vendor ID: %x ProductID: %x", gamePadMappings[g].name, deviceInfo.mouse.dwId,
-            //                deviceInfo.mouse.dwNumberOfButtons);
-        }
-    }
+    char path[0x100]; 
+    sprintf_s(path, sizeof(path), "%sgamecontrollerdb.txt", SKU::userFileDir);
+    SDL_GameControllerAddMappingsFromFile(path);
 }
 
-void RSDK::SKU::ReleaseSDL2InputAPI()
-{
-	SDL_QuitSubSystem(SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC);
-}
+void RSDK::SKU::ReleaseSDL2InputAPI() { SDL_QuitSubSystem(SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC); }

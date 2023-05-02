@@ -12,19 +12,6 @@ char RSDK::gameLogicName[0x200];
 
 bool32 RSDK::useDataPack = false;
 
-#if RETRO_PLATFORM == RETRO_ANDROID
-FileIO *fOpen(const char *path, const char *mode)
-{
-    char buffer[0x200];
-    int32 a = 0;
-    if (!strncmp(path, SKU::userFileDir, strlen(SKU::userFileDir)))
-        a = strlen(SKU::userFileDir);
-    sprintf_s(buffer, (int32)sizeof(buffer), "%s%s", SKU::userFileDir, path + a);
-
-    return fopen(buffer, mode);
-}
-#endif
-
 #if RETRO_REV0U
 void RSDK::DetectEngineVersion()
 {
@@ -128,7 +115,7 @@ bool32 RSDK::LoadDataPack(const char *filePath, size_t fileOffset, bool32 useBuf
     sprintf_s(dataPackPath, (int32)sizeof(dataPackPath), "%s", filePath);
     sprintf_s(trueDataPackPath, (int32)sizeof(trueDataPackPath), "%s%s", SKU::userFileDir, filePath);
 #else
-    sprintf_s(dataPackPath, (int32)sizeof(dataPackPath), "%s%s", SKU::userFileDir, filePath);
+    sprintf_s(dataPackPath, sizeof(dataPackPath), "%s%s", SKU::userFileDir, filePath);
 #endif
 
     InitFileInfo(&info);
@@ -264,27 +251,22 @@ bool32 RSDK::LoadFile(FileInfo *info, const char *filename, uint8 fileMode)
 
 #if RETRO_USE_MOD_LOADER
     char pathLower[0x100];
-    memset(pathLower, 0, sizeof(char) * 0x100);
-    for (int32 c = 0; c < strlen(filename); ++c) {
-        pathLower[c] = tolower(filename[c]);
-    }
+    memset(pathLower, 0, sizeof(pathLower));
+    for (int32 c = 0; c < strlen(filename); ++c) pathLower[c] = tolower(filename[c]);
 
     bool32 addPath = false;
-    if (modSettings.activeMod != -1) {
-        char buf[0x100];
-        sprintf_s(buf, (int32)sizeof(buf), "%s", fullFilePath);
-        sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "%smods/%s/%s", SKU::userFileDir, modList[modSettings.activeMod].id.c_str(), buf);
-        info->externalFile = true;
-        addPath            = false;
-    }
-    else {
-        for (int32 m = 0; m < modList.size(); ++m) {
-            if (modList[m].active) {
-                std::map<std::string, std::string>::const_iterator iter = modList[m].fileMap.find(pathLower);
-                if (iter != modList[m].fileMap.cend()) {
+    int32 m        = modSettings.activeMod != -1 ? modSettings.activeMod : 0;
+    for (; m < modList.size(); ++m) {
+        if (modList[m].active) {
+            std::map<std::string, std::string>::const_iterator iter = modList[m].fileMap.find(pathLower);
+            if (iter != modList[m].fileMap.cend()) {
+                if (std::find(modList[m].excludedFiles.begin(), modList[m].excludedFiles.end(), pathLower) == modList[m].excludedFiles.end()) {
                     strcpy(fullFilePath, iter->second.c_str());
                     info->externalFile = true;
                     break;
+                }
+                else {
+                    PrintLog(PRINT_NORMAL, "[MOD] Excluded File: %s", pathLower);
                 }
             }
         }
@@ -319,9 +301,11 @@ bool32 RSDK::LoadFile(FileInfo *info, const char *filename, uint8 fileMode)
 
     if (addPath) {
         char pathBuf[0x100];
-        sprintf_s(pathBuf, (int32)sizeof(pathBuf), "%s%s", SKU::userFileDir, fullFilePath);
-        sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "%s", pathBuf);
+        sprintf_s(pathBuf, sizeof(pathBuf), "%s%s", SKU::userFileDir, fullFilePath);
+        sprintf_s(fullFilePath, sizeof(fullFilePath), "%s", pathBuf);
     }
+#else
+    (void)addPath; // unused
 #endif
 
     if (!info->externalFile && fileMode == FMODE_RB && useDataPack) {
@@ -355,11 +339,23 @@ bool32 RSDK::LoadFile(FileInfo *info, const char *filename, uint8 fileMode)
 
 void RSDK::GenerateELoadKeys(FileInfo *info, const char *key1, int32 key2)
 {
+    // This function splits hashes into bytes by casting their integers to byte arrays,
+    // which only works as intended on little-endian CPUs.
+#if !RETRO_USE_ORIGINAL_CODE
+    RETRO_HASH_MD5(hash);
+#else
     uint8 hash[0x10];
+#endif
     char hashBuffer[0x400];
 
     // KeyA
     StringUpperCase(hashBuffer, key1);
+#if !RETRO_USE_ORIGINAL_CODE
+    GEN_HASH_MD5_BUFFER(hashBuffer, hash);
+
+    for (int32 i = 0; i < 4; ++i)
+        for (int32 j = 0; j < 4; ++j) info->encryptionKeyA[i * 4 + j] = (hash[i] >> (8 * (j ^ 3))) & 0xFF;
+#else
     GEN_HASH_MD5_BUFFER(hashBuffer, (uint32 *)hash);
 
     for (int32 y = 0; y < 0x10; y += 4) {
@@ -368,9 +364,16 @@ void RSDK::GenerateELoadKeys(FileInfo *info, const char *key1, int32 key2)
         info->encryptionKeyA[y + 1] = hash[y + 2];
         info->encryptionKeyA[y + 0] = hash[y + 3];
     }
+#endif
 
     // KeyB
-    sprintf_s(hashBuffer, (int32)sizeof(hashBuffer), "%d", key2);
+    sprintf_s(hashBuffer, sizeof(hashBuffer), "%d", key2);
+#if !RETRO_USE_ORIGINAL_CODE
+    GEN_HASH_MD5_BUFFER(hashBuffer, hash);
+
+    for (int32 i = 0; i < 4; ++i)
+        for (int32 j = 0; j < 4; ++j) info->encryptionKeyB[i * 4 + j] = (hash[i] >> (8 * (j ^ 3))) & 0xFF;
+#else
     GEN_HASH_MD5_BUFFER(hashBuffer, (uint32 *)hash);
 
     for (int32 y = 0; y < 0x10; y += 4) {
@@ -379,6 +382,7 @@ void RSDK::GenerateELoadKeys(FileInfo *info, const char *key1, int32 key2)
         info->encryptionKeyB[y + 1] = hash[y + 2];
         info->encryptionKeyB[y + 0] = hash[y + 3];
     }
+#endif
 }
 
 void RSDK::DecryptBytes(FileInfo *info, void *buffer, size_t size)

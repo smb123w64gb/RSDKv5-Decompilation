@@ -1,9 +1,6 @@
-# WINDOWS SETUP
+# Windows
 
-* Clone the repo, then install the dependencies listed below.
-* Build via the Visual Studio solution (or grab a prebuilt executable from the releases section.)
-
-## Dependencies:
+## Installing dependencies 
 
 * libogg: https://xiph.org/downloads/ (libogg)
   * Download libogg and unzip it in "./libogg/", then build the static library
@@ -14,4 +11,8 @@
 * SDL2 (Required for SDL2 backends): https://www.libsdl.org/download-2.0.php
   * Download the appropriate development library for your compiler and unzip it in "./SDL2/"
 
-* For the GL3 backends, visit the GL3 README [here.](../gl3/README.md)
+* For the OGL backends, visit the OGL README [here.](../ogl/README.md)
+
+## Compiling
+
+* Build via the Visual Studio solution (or grab a prebuilt executable from the releases section.)

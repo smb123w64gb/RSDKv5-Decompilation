@@ -1,10 +1,10 @@
 #include "RSDK/Core/RetroEngine.hpp"
 
+using namespace RSDK;
+
 #if RETRO_REV0U
 #include "Legacy/ObjectLegacy.cpp"
 #endif
-
-using namespace RSDK;
 
 ObjectClass RSDK::objectClassList[OBJECT_COUNT];
 int32 RSDK::objectClassCount = 0;
@@ -87,6 +87,10 @@ void RSDK::RegisterObject(Object **staticVars, const char *name, uint32 entityCl
         classInfo->staticLoad = staticLoad;
 #endif
 
+#if !RETRO_USE_ORIGINAL_CODE
+        classInfo->name = name;
+#endif
+
         ++objectClassCount;
     }
 }
@@ -119,7 +123,7 @@ void RSDK::LoadStaticVariables(uint8 *classPtr, uint32 *hash, int32 readOffset)
     for (int32 i = 0; i < 32; i += 4) classHash[strPos++] = hexChars[(hash[2] >> i) & 0xF];
     for (int32 i = 0; i < 32; i += 4) classHash[strPos++] = hexChars[(hash[3] >> i) & 0xF];
 
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Objects/Static/%s.bin", classHash);
+    sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Objects/Static/%s.bin", classHash);
 
     FileInfo info;
     InitFileInfo(&info);
@@ -167,7 +171,14 @@ void RSDK::LoadStaticVariables(uint8 *classPtr, uint32 *hash, int32 readOffset)
                         ALIGN_TO(int16);
 
                         if (info.readPos + (count * sizeof(int16)) <= info.fileSize && &classPtr[dataPos]) {
-                            for (int32 i = 0; i < count * sizeof(int16); i += sizeof(int16)) ReadBytes(&info, &classPtr[dataPos + i], sizeof(int16));
+                            for (int32 i = 0; i < count * sizeof(int16); i += sizeof(int16)) {
+#if !RETRO_USE_ORIGINAL_CODE
+                                *(int16 *)&classPtr[dataPos + i] = ReadInt16(&info);
+#else
+                                // This only works as intended on little-endian CPUs.
+                                ReadBytes(&info, &classPtr[dataPos + i], sizeof(int16));
+#endif
+                            }
                         }
                         else {
                             info.readPos += count * sizeof(int16);
@@ -182,7 +193,14 @@ void RSDK::LoadStaticVariables(uint8 *classPtr, uint32 *hash, int32 readOffset)
                         ALIGN_TO(int32);
 
                         if (info.readPos + (count * sizeof(int32)) <= info.fileSize && &classPtr[dataPos]) {
-                            for (int32 i = 0; i < count * sizeof(int32); i += sizeof(int32)) ReadBytes(&info, &classPtr[dataPos + i], sizeof(int32));
+                            for (int32 i = 0; i < count * sizeof(int32); i += sizeof(int32)) {
+#if !RETRO_USE_ORIGINAL_CODE
+                                *(int32 *)&classPtr[dataPos + i] = ReadInt32(&info, false);
+#else
+                                // This only works as intended on little-endian CPUs.
+                                ReadBytes(&info, &classPtr[dataPos + i], sizeof(int32));
+#endif
+                            }
                         }
                         else {
                             info.readPos += count * sizeof(int32);
@@ -196,8 +214,14 @@ void RSDK::LoadStaticVariables(uint8 *classPtr, uint32 *hash, int32 readOffset)
                         ALIGN_TO(bool32);
 
                         if (info.readPos + (count * sizeof(bool32)) <= info.fileSize && &classPtr[dataPos]) {
-                            for (int32 i = 0; i < count * sizeof(bool32); i += sizeof(bool32))
+                            for (int32 i = 0; i < count * sizeof(bool32); i += sizeof(bool32)) {
+#if !RETRO_USE_ORIGINAL_CODE
+                                *(bool32 *)&classPtr[dataPos + i] = (bool32)ReadInt32(&info, false);
+#else
+                                // This only works as intended on little-endian CPUs.
                                 ReadBytes(&info, &classPtr[dataPos + i], sizeof(bool32));
+#endif
+                            }
                         }
                         else {
                             info.readPos += count * sizeof(bool32);
@@ -805,6 +829,95 @@ void RSDK::ProcessObjectDrawLists()
             }
 
 #if !RETRO_USE_ORIGINAL_CODE
+            if (engine.showUpdateRanges) {
+                for (int32 l = 0; l < DRAWGROUP_COUNT; ++l) {
+                    if (engine.drawGroupVisible[l]) {
+                        DrawList *list = &drawGroups[l];
+                        for (int32 i = 0; i < list->entityCount; ++i) {
+                            Entity *entity     = &objectEntityList[list->entries[i]];
+
+                            if (entity->visible || (engine.showUpdateRanges & 2)) {
+                                switch (entity->active) {
+                                    default:
+                                    case ACTIVE_DISABLED:
+                                    case ACTIVE_NEVER: break;
+
+                                    case ACTIVE_ALWAYS:
+                                    case ACTIVE_NORMAL: 
+                                    case ACTIVE_PAUSED:
+                                        DrawRectangle(entity->position.x, entity->position.y, TO_FIXED(1), TO_FIXED(1), 0x0000FF, 0xFF, INK_NONE,
+                                                      false);
+                                        break;
+
+                                    case ACTIVE_BOUNDS:
+                                        DrawLine(entity->position.x - entity->updateRange.x, entity->position.y - entity->updateRange.y,
+                                                 entity->position.x + entity->updateRange.x, entity->position.y - entity->updateRange.y, 0x0000FF,
+                                                 0xFF, INK_NONE, false);
+
+                                        DrawLine(entity->position.x - entity->updateRange.x, entity->position.y + entity->updateRange.y,
+                                                 entity->position.x + entity->updateRange.x, entity->position.y + entity->updateRange.y, 0x0000FF,
+                                                 0xFF, INK_NONE, false);
+
+                                        DrawLine(entity->position.x - entity->updateRange.x, entity->position.y - entity->updateRange.y,
+                                                 entity->position.x - entity->updateRange.x, entity->position.y + entity->updateRange.y, 0x0000FF,
+                                                 0xFF, INK_NONE, false);
+
+                                        DrawLine(entity->position.x + entity->updateRange.x, entity->position.y - entity->updateRange.y,
+                                                 entity->position.x + entity->updateRange.x, entity->position.y + entity->updateRange.y, 0x0000FF,
+                                                 0xFF, INK_NONE, false);
+                                        break;
+
+                                    case ACTIVE_XBOUNDS:
+                                        DrawLine(entity->position.x - entity->updateRange.x, TO_FIXED(currentScreen->position.y),
+                                                 entity->position.x - entity->updateRange.x,
+                                                 TO_FIXED(currentScreen->position.y + currentScreen->size.y), 0x0000FF, 0xFF, INK_NONE, false);
+
+                                        DrawLine(entity->position.x + entity->updateRange.x, TO_FIXED(currentScreen->position.y),
+                                                 entity->position.x + entity->updateRange.x,
+                                                 TO_FIXED(currentScreen->position.y + currentScreen->size.y), 0x0000FF, 0xFF, INK_NONE, false);
+                                        break;
+
+                                    case ACTIVE_YBOUNDS:
+                                        DrawLine(TO_FIXED(currentScreen->position.x), entity->position.y - entity->updateRange.y,
+                                                 TO_FIXED(currentScreen->position.x + currentScreen->size.x),
+                                                 entity->position.y - entity->updateRange.y, 0x0000FF, 0xFF, INK_NONE, false);
+
+                                        DrawLine(TO_FIXED(currentScreen->position.x), entity->position.y + entity->updateRange.y,
+                                                 TO_FIXED(currentScreen->position.x + currentScreen->size.x),
+                                                 entity->position.y + entity->updateRange.y, 0x0000FF, 0xFF, INK_NONE, false);
+                                        break;
+
+                                    case ACTIVE_RBOUNDS:
+                                        DrawCircleOutline(entity->position.x, entity->position.y, FROM_FIXED(entity->updateRange.x),
+                                                          FROM_FIXED(entity->updateRange.x) + 1, 0x0000FF, 0xFF, INK_NONE, false);
+                                        break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (engine.showEntityInfo) {
+                for (int32 l = 0; l < DRAWGROUP_COUNT; ++l) {
+                    if (engine.drawGroupVisible[l]) {
+                        DrawList *list = &drawGroups[l];
+                        for (int32 i = 0; i < list->entityCount; ++i) {
+                            Entity *entity = &objectEntityList[list->entries[i]];
+
+                            if (entity->visible || (engine.showEntityInfo & 2)) {
+                                char buffer[0x100];
+                                sprintf_s(buffer, sizeof(buffer), "%s\nx: %g\ny: %g", objectClassList[stageObjectIDs[entity->classID]].name,
+                                          entity->position.x / 65536.0f, entity->position.y / 65536.0f);
+
+                                DrawDevString(buffer, FROM_FIXED(entity->position.x) - currentScreen->position.x,
+                                              FROM_FIXED(entity->position.y) - currentScreen->position.y, ALIGN_LEFT, 0xF0F0F0);
+                            }
+                        }
+                    }
+                }
+            }
+
             if (showHitboxes) {
                 for (int32 i = 0; i < debugHitboxCount; ++i) {
                     DebugHitboxInfo *info = &debugHitboxList[i];
@@ -905,7 +1018,7 @@ uint16 RSDK::FindObject(const char *name)
             return o;
     }
 
-    return 0;
+    return TYPE_DEFAULTOBJECT;
 }
 
 int32 RSDK::GetEntityCount(uint16 classID, bool32 isActive)

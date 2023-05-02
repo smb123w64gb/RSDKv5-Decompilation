@@ -1,4 +1,13 @@
-#define _GLVERSION "#version 130\n#define in_V in\n#define in_F in\n"
+#ifndef _GLVERSION
+#define _GLVERSION 20
+//#define _GLVERSION 33
+#endif
+
+#if _GLVERSION > 30
+#define _GLSLVERSION "#version 130\n#define in_V in\n#define in_F in\n"
+#else
+#define _GLSLVERSION "#version 110\n#define in_V attribute\n#define out varying\n#define in_F varying\n"
+#endif
 
 #if RETRO_REV02
 #define _GLDEFINE "#define RETRO_REV02 (1)\n"
@@ -8,7 +17,6 @@
 
 const GLchar *backupVertex = R"aa(
 in_V vec3 in_pos;
-in_V vec4 in_color;
 in_V vec2 in_UV;
 out vec4 ex_color;
 out vec2 ex_UV;
@@ -16,7 +24,7 @@ out vec2 ex_UV;
 void main()
 {
     gl_Position = vec4(in_pos, 1.0);
-    ex_color    = in_color;
+    ex_color    = vec4(1.0);
     ex_UV       = in_UV;
 }
 )aa";
@@ -29,7 +37,7 @@ uniform sampler2D texDiffuse;
 
 void main()
 {
-    gl_FragColor = texture(texDiffuse, ex_UV);
+    gl_FragColor = texture2D(texDiffuse, ex_UV);
 }
 )aa";
 
@@ -50,9 +58,9 @@ uint32 *RenderDevice::videoBuffer;
 bool RenderDevice::Init()
 {
     glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, _GLVERSION / 10);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, _GLVERSION % 10);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     if (!videoSettings.bordered)
@@ -182,18 +190,22 @@ bool RenderDevice::InitGraphicsAPI()
     glDisable(GL_CULL_FACE);
 
     // setup buffers
+
+#if _GLVERSION > 30
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
+#endif
+
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(RenderVertex) * (!RETRO_REV02 ? 24 : 60), NULL, GL_DYNAMIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(RenderVertex), 0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(RenderVertex), (void *)offsetof(RenderVertex, color));
+    // glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(RenderVertex), (void *)offsetof(RenderVertex, color));
+    // glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(RenderVertex), (void *)offsetof(RenderVertex, tex));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(RenderVertex), (void *)offsetof(RenderVertex, tex));
-    glEnableVertexAttribArray(2);
 
     if (videoSettings.windowed || !videoSettings.exclusiveFS) {
         if (videoSettings.windowed) {
@@ -226,7 +238,7 @@ bool RenderDevice::InitGraphicsAPI()
 
         screens[s].size.y = videoSettings.pixHeight;
 
-        float viewAspect  = viewSize.x / viewSize.y;
+        float viewAspect = viewSize.x / viewSize.y;
 #if !RETRO_USE_ORIGINAL_CODE
         screenWidth = (int32)((viewAspect * videoSettings.pixHeight) + 3) & 0xFFFFFFFC;
 #else
@@ -319,47 +331,152 @@ bool RenderDevice::InitGraphicsAPI()
     return true;
 }
 
+// CUSTOM BUFFER FOR SHENANIGAN PURPOSES
+// GL hates us and it's coordinate system is reverse of DX
+// for shader output equivalency, we havee to flip everything
+// X and Y are negated, some verts are specifically moved to match
+// U and V are 0/1s and flipped from what it was originally
+// clang-format off
+#if RETRO_REV02
+const RenderVertex rsdkGLVertexBuffer[60] = {
+    // 1 Screen (0)
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    
+    // 2 Screens - Bordered (Top Screen) (6)
+    { { +0.5,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +0.5, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -0.5, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +0.5,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -0.5,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -0.5, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    
+    // 2 Screens - Bordered (Bottom Screen) (12)
+    { { +0.5, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +0.5,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -0.5,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +0.5, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -0.5, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -0.5,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    
+    // 2 Screens - Stretched (Top Screen) (18)
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+  
+    // 2 Screens - Stretched (Bottom Screen) (24)
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    
+    // 4 Screens (Top-Left) (30)
+    { {  0.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { {  0.0, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { {  0.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+
+    // 4 Screens (Top-Right) (36)
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { {  0.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { {  0.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { {  0.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    
+    // 4 Screens (Bottom-Right) (42)
+    { {  0.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { {  0.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { {  0.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    
+    // 4 Screens (Bottom-Left) (48)
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { {  0.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { {  0.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { {  0.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    
+    // Image/Video (54)
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } }
+};
+#else
+const RenderVertex rsdkGLVertexBuffer[24] =
+{
+    // 1 Screen (0)
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+
+    // 2 Screens - Stretched (Top Screen) (6)
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+  
+    // 2 Screens - Stretched (Bottom Screen) (12)
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+  
+    // Image/Video (18)
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } }
+};
+#endif
+
+
 void RenderDevice::InitVertexBuffer()
 {
-    RenderVertex vertBuffer[sizeof(rsdkVertexBuffer) / sizeof(RenderVertex)];
-    memcpy(vertBuffer, rsdkVertexBuffer, sizeof(rsdkVertexBuffer));
+    RenderVertex vertBuffer[sizeof(rsdkGLVertexBuffer) / sizeof(RenderVertex)];
+    memcpy(vertBuffer, rsdkGLVertexBuffer, sizeof(rsdkGLVertexBuffer));
 
     float x = 0.5 / (float)viewSize.x;
     float y = 0.5 / (float)viewSize.y;
 
     // ignore the last 6 verts, they're scaled to the 1024x512 textures already!
-    // we do the negation of DX9/DX11 here because there are different texture origins
     int32 vertCount = (RETRO_REV02 ? 60 : 24) - 6;
     for (int32 v = 0; v < vertCount; ++v) {
         RenderVertex *vertex = &vertBuffer[v];
-        vertex->pos.x        = -vertex->pos.x + x;
-        vertex->pos.y        = -vertex->pos.y - y;
+        vertex->pos.x        = vertex->pos.x + x;
+        vertex->pos.y        = vertex->pos.y - y;
 
-        if (!vertex->tex.x)
-            vertex->tex.x = (float)screens[0].size.x / textureSize.x;
-        else
-            vertex->tex.x = 0;
+        if (vertex->tex.x)
+            vertex->tex.x = screens[0].size.x * (1.0 / textureSize.x);
 
-        if (!vertex->tex.y)
-            vertex->tex.y = (float)screens[0].size.y / textureSize.y;
-        else
-            vertex->tex.y = 0;
-    }
-
-    for (int32 v = vertCount; v < vertCount + 6; ++v) {
-        RenderVertex *vertex = &vertBuffer[v];
-        vertex->pos.x        = -vertex->pos.x;
-        vertex->pos.y        = -vertex->pos.y;
-
-        if (!vertex->tex.x)
-            vertex->tex.x = 1;
-        else
-            vertex->tex.x = 0;
-
-        if (!vertex->tex.y)
-            vertex->tex.y = 1;
-        else
-            vertex->tex.y = 0;
+        if (vertex->tex.y)
+            vertex->tex.y = screens[0].size.y * (1.0 / textureSize.y);
     }
 
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(RenderVertex) * (!RETRO_REV02 ? 24 : 60), vertBuffer);
@@ -460,6 +577,7 @@ void RenderDevice::FlipScreen()
 
 #if RETRO_REV02
         case 3:
+            // also flipped
             glBindTexture(GL_TEXTURE_2D, screenTextures[0]);
             glDrawArrays(GL_TRIANGLES, startVertex_3P[0], 6);
 
@@ -471,9 +589,9 @@ void RenderDevice::FlipScreen()
             break;
 
         case 4:
+            // this too
             glBindTexture(GL_TEXTURE_2D, screenTextures[0]);
             glDrawArrays(GL_TRIANGLES, 30, 6);
-
             glBindTexture(GL_TEXTURE_2D, screenTextures[1]);
             glDrawArrays(GL_TRIANGLES, 36, 6);
 
@@ -499,8 +617,12 @@ void RenderDevice::Release(bool32 isRefresh)
     for (int32 i = 0; i < shaderCount; ++i) {
         glDeleteProgram(shaderList[i].programID);
     }
+    
+#if _GLVERSION > 30
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
+#endif
+
     shaderCount = 0;
 #if RETRO_USE_MOD_LOADER
     userShaderCount = 0;
@@ -525,7 +647,9 @@ bool RenderDevice::InitShaders()
 {
     videoSettings.shaderSupport = true;
     int32 maxShaders            = 0;
+#if RETRO_USE_MOD_LOADER
     shaderCount                 = 0;
+#endif
 
     LoadShader("None", false);
     LoadShader("Clean", true);
@@ -553,26 +677,43 @@ bool RenderDevice::InitShaders()
         maxShaders  = 1;
         shaderCount = 1;
 
+        GLint success;
+        char infoLog[0x1000];
+
+
         GLuint vert, frag;
-        const GLchar *vchar[] = { _GLVERSION, _GLDEFINE, backupVertex };
+        const GLchar *vchar[] = { _GLSLVERSION, _GLDEFINE, backupVertex };
         vert                  = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vert, 3, vchar, NULL);
         glCompileShader(vert);
 
-        const GLchar *fchar[] = { _GLVERSION, _GLDEFINE, backupFragment };
+        const GLchar *fchar[] = { _GLSLVERSION, _GLDEFINE, backupFragment };
         frag                  = glCreateShader(GL_FRAGMENT_SHADER);
         glShaderSource(frag, 3, fchar, NULL);
         glCompileShader(frag);
 
+        glGetShaderiv(vert, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(vert, 0x1000, NULL, infoLog);
+            PrintLog(PRINT_NORMAL, "BACKUP vertex shader compiling failed:\n%s", infoLog);
+        }        
+
+        glGetShaderiv(frag, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(frag, 0x1000, NULL, infoLog);
+            PrintLog(PRINT_NORMAL, "BACKUP fragment shader compiling failed:\n%s", infoLog);
+        }     
         shader->programID = glCreateProgram();
         glAttachShader(shader->programID, vert);
         glAttachShader(shader->programID, frag);
+
+        glBindAttribLocation(shader->programID, 0, "in_pos");
+        //glBindAttribLocation(shader->programID, 1, "in_color");
+        glBindAttribLocation(shader->programID, 1, "in_UV");
+        
         glLinkProgram(shader->programID);
         glDeleteShader(vert);
         glDeleteShader(frag);
-        glBindAttribLocation(shader->programID, 0, "in_pos");
-        glBindAttribLocation(shader->programID, 1, "in_color");
-        glBindAttribLocation(shader->programID, 2, "in_UV");
 
         glUseProgram(shader->programID);
 
@@ -600,12 +741,12 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
 
     ShaderEntry *shader = &shaderList[shaderCount];
     shader->linear      = linear;
-    sprintf_s(shader->name, (int32)sizeof(shader->name), "%s", fileName);
+    sprintf_s(shader->name, sizeof(shader->name), "%s", fileName);
 
     GLint success;
     char infoLog[0x1000];
     GLuint vert, frag;
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Shaders/GL3/None.vs");
+    sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Shaders/OGL/None.vs");
     InitFileInfo(&info);
     if (LoadFile(&info, fullFilePath, FMODE_RB)) {
         uint8 *fileData = NULL;
@@ -614,15 +755,22 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
         fileData[info.fileSize] = 0;
         CloseFile(&info);
 
-        const GLchar *glchar[] = { _GLVERSION, _GLDEFINE, (const GLchar *)fileData };
+        const GLchar *glchar[] = { _GLSLVERSION, _GLDEFINE, (const GLchar *)fileData };
         vert                   = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vert, 3, glchar, NULL);
         glCompileShader(vert);
+
+        glGetShaderiv(vert, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(vert, 0x1000, NULL, infoLog);
+            PrintLog(PRINT_NORMAL, "Vertex shader compiling failed:\n%s", infoLog);
+            return;
+        }        
     }
     else
         return;
 
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Shaders/GL3/%s.fs", fileName);
+    sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Shaders/OGL/%s.fs", fileName);
     InitFileInfo(&info);
     if (LoadFile(&info, fullFilePath, FMODE_RB)) {
         uint8 *fileData = NULL;
@@ -631,10 +779,17 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
         fileData[info.fileSize] = 0;
         CloseFile(&info);
 
-        const GLchar *glchar[] = { _GLVERSION, _GLDEFINE, (const GLchar *)fileData };
+        const GLchar *glchar[] = { _GLSLVERSION, _GLDEFINE, (const GLchar *)fileData };
         frag                   = glCreateShader(GL_FRAGMENT_SHADER);
         glShaderSource(frag, 3, glchar, NULL);
         glCompileShader(frag);
+
+        glGetShaderiv(frag, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(frag, 0x1000, NULL, infoLog);
+            PrintLog(PRINT_NORMAL, "Fragment shader compiling failed:\n%s", infoLog);
+            return;
+        }     
     }
     else
         return;
@@ -642,6 +797,11 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
     shader->programID = glCreateProgram();
     glAttachShader(shader->programID, vert);
     glAttachShader(shader->programID, frag);
+
+    glBindAttribLocation(shader->programID, 0, "in_pos");
+    //glBindAttribLocation(shader->programID, 1, "in_color");
+    glBindAttribLocation(shader->programID, 1, "in_UV");
+
     glLinkProgram(shader->programID);
     glGetProgramiv(shader->programID, GL_LINK_STATUS, &success);
     if (!success) {
@@ -651,9 +811,7 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
     }
     glDeleteShader(vert);
     glDeleteShader(frag);
-    glBindAttribLocation(shader->programID, 0, "in_pos");
-    glBindAttribLocation(shader->programID, 1, "in_color");
-    glBindAttribLocation(shader->programID, 2, "in_UV");
+
     shaderCount++;
 };
 
@@ -911,7 +1069,8 @@ void RenderDevice::ProcessKeyEvent(GLFWwindow *, int32 key, int32 scancode, int3
                 case GLFW_KEY_F1:
                     if (engine.devMenu) {
                         sceneInfo.listPos--;
-                        if (sceneInfo.listPos < sceneInfo.listCategory[sceneInfo.activeCategory].sceneOffsetStart) {
+                        if (sceneInfo.listPos < sceneInfo.listCategory[sceneInfo.activeCategory].sceneOffsetStart
+                            || sceneInfo.listPos >= sceneInfo.listCategory[sceneInfo.activeCategory].sceneOffsetEnd) {
                             sceneInfo.activeCategory--;
                             if (sceneInfo.activeCategory >= sceneInfo.categoryCount) {
                                 sceneInfo.activeCategory = sceneInfo.categoryCount - 1;
@@ -935,7 +1094,7 @@ void RenderDevice::ProcessKeyEvent(GLFWwindow *, int32 key, int32 scancode, int3
                 case GLFW_KEY_F2:
                     if (engine.devMenu) {
                         sceneInfo.listPos++;
-                        if (sceneInfo.listPos >= sceneInfo.listCategory[sceneInfo.activeCategory].sceneOffsetEnd) {
+                        if (sceneInfo.listPos >= sceneInfo.listCategory[sceneInfo.activeCategory].sceneOffsetEnd || sceneInfo.listPos == 0) {
                             sceneInfo.activeCategory++;
                             if (sceneInfo.activeCategory >= sceneInfo.categoryCount) {
                                 sceneInfo.activeCategory = 0;
@@ -963,9 +1122,19 @@ void RenderDevice::ProcessKeyEvent(GLFWwindow *, int32 key, int32 scancode, int3
                     break;
 
 #if !RETRO_USE_ORIGINAL_CODE
+                case GLFW_KEY_F4:
+                    if (engine.devMenu)
+                        engine.showEntityInfo ^= 1;
+                    break;
+
                 case GLFW_KEY_F5:
                     if (engine.devMenu) {
                         // Quick-Reload
+#if RETRO_USE_MOD_LOADER
+                        if (mods & GLFW_MOD_CONTROL)
+                            RefreshModFolders();   
+#endif
+
 #if RETRO_REV0U
                         switch (engine.version) {
                             default: break;
@@ -987,6 +1156,11 @@ void RenderDevice::ProcessKeyEvent(GLFWwindow *, int32 key, int32 scancode, int3
                 case GLFW_KEY_F7:
                     if (engine.devMenu && videoSettings.screenCount < SCREEN_COUNT)
                         videoSettings.screenCount++;
+                    break;
+
+                case GLFW_KEY_F8:
+                    if (engine.devMenu)
+                        engine.showUpdateRanges ^= 1;
                     break;
 
                 case GLFW_KEY_F9:
@@ -1123,7 +1297,7 @@ void RenderDevice::ProcessJoystickEvent(int32 ID, int32 event)
         return;
     uint32 hash;
     char idBuffer[0x20];
-    sprintf_s(idBuffer, (int32)sizeof(idBuffer), "%s%d", "GLFWDevice", ID);
+    sprintf_s(idBuffer, sizeof(idBuffer), "%s%d", "GLFWDevice", ID);
     GenerateHashCRC(&hash, idBuffer);
 
     if (event == GLFW_CONNECTED)

@@ -88,14 +88,64 @@ enum ModFunctionTableIDs {
     ModTable_RegisterStateHook,
     ModTable_HandleRunState_HighPriority,
     ModTable_HandleRunState_LowPriority,
+
+#if RETRO_MOD_LOADER_VER >= 2
+    // Mod Settings (Part 2)
+    ModTable_ForeachSetting,
+    ModTable_ForeachSettingCategory,
+
+    // Files
+    ModTable_ExcludeFile,
+    ModTable_ExcludeAllFiles,
+    ModTable_ReloadFile,
+    ModTable_ReloadAllFiles,
+
+    // Graphics
+    ModTable_GetSpriteAnimation,
+    ModTable_GetSpriteSurface,
+    ModTable_GetPaletteBank,
+    ModTable_GetActivePaletteBuffer,
+    ModTable_GetRGB32To16Buffer,
+    ModTable_GetBlendLookupTable,
+    ModTable_GetSubtractLookupTable,
+    ModTable_GetTintLookupTable,
+    ModTable_GetMaskColor,
+    ModTable_GetScanEdgeBuffer,
+    ModTable_GetCamera,
+    ModTable_GetShader,
+    ModTable_GetModel,
+    ModTable_GetScene3D,
+    ModTable_DrawDynamicAniTile,
+
+    // Audio
+    ModTable_GetSfx,
+    ModTable_GetChannel,
+
+    // Objects/Entities
+    ModTable_GetGroupEntities,
+
+    // Collision
+    ModTable_SetPathGripSensors,
+    ModTable_FloorCollision,
+    ModTable_LWallCollision,
+    ModTable_RoofCollision,
+    ModTable_RWallCollision,
+    ModTable_FindFloorPosition,
+    ModTable_FindLWallPosition,
+    ModTable_FindRoofPosition,
+    ModTable_FindRWallPosition,
+    ModTable_CopyCollisionMask,
+    ModTable_GetCollisionInfo,
+#endif
+
     ModTable_Count
 };
 
 typedef void (*ModCallback)(void *data);
 typedef std::function<void(void *data)> ModCallbackSTD;
 
-typedef bool (*modLink)(GameInfo *, const char *);
-typedef std::function<bool(GameInfo *, const char *)> modLinkSTD;
+typedef bool (*modLink)(EngineInfo *, const char *);
+typedef std::function<bool(EngineInfo *, const char *)> modLinkSTD;
 
 struct ModPublicFunctionInfo {
     std::string name;
@@ -127,6 +177,7 @@ struct ModInfo {
     std::string desc;
     std::string author;
     std::string version;
+    std::string folderName;
     bool active;
     bool redirectSaveRAM;
     bool disableGameLogic;
@@ -134,6 +185,7 @@ struct ModInfo {
     int32 targetVersion;
     int32 forceVersion;
     std::map<std::string, std::string> fileMap;
+    std::vector<std::string> excludedFiles;
     std::vector<ModPublicFunctionInfo> functionList;
     std::vector<Link::Handle> modLogicHandles;
     std::vector<modLinkSTD> linkModLogic;
@@ -181,10 +233,10 @@ extern ModInfo *currentMod;
 
 inline void SetActiveMod(int32 id) { modSettings.activeMod = id; }
 
-void InitModAPI();
+void InitModAPI(bool32 getVersion = false);
 void UnloadMods();
-void LoadMods(bool newOnly = false);
-bool32 LoadMod(ModInfo *info, std::string modsPath, std::string folder, bool32 active);
+void LoadMods(bool newOnly = false, bool32 getVersion = false);
+bool32 LoadMod(ModInfo *info, std::string modsPath, std::string folder, bool32 active, bool32 getVersion = false);
 void SaveMods();
 void SortMods();
 void LoadModSettings();
@@ -202,12 +254,12 @@ inline std::vector<ModInfo *> ActiveMods()
     return ret;
 }
 
-void ScanModFolder(ModInfo *info);
-inline void RefreshModFolders()
+bool32 ScanModFolder(ModInfo *info, const char *targetFile = nullptr, bool32 fromLoadMod = false, bool32 loadingBar = true);
+inline void RefreshModFolders(bool32 versionOnly = false, bool32 loadingBar = true)
 {
     int32 activeModCount = (int32)ActiveMods().size();
     for (int32 m = 0; m < activeModCount; ++m) {
-        ScanModFolder(&modList[m]);
+        ScanModFolder(&modList[m], versionOnly ? "Data/Game/GameConfig.bin" : nullptr, true, loadingBar);
     }
 }
 
@@ -255,7 +307,7 @@ bool32 ForeachModID(String *id);
 void AddModCallback(int32 callbackID, ModCallback callback);
 void AddModCallback_STD(int32 callbackID, ModCallbackSTD callback);
 void AddPublicFunction(const char *functionName, void *functionPtr);
-void *GetPublicFunction(const char *folder, const char *functionName);
+void *GetPublicFunction(const char *id, const char *functionName);
 
 bool32 GetSettingsBool(const char *id, const char *key, bool32 fallback);
 int32 GetSettingsInteger(const char *id, const char *key, int32 fallback);
@@ -275,6 +327,10 @@ float GetConfigFloat(const char *key, float fallback);
 void GetConfigString(const char *key, String *result, const char *fallback);
 bool32 ForeachConfig(String *config);
 bool32 ForeachConfigCategory(String *category);
+#if RETRO_MOD_LOADER_VER >= 2
+bool32 ForeachSetting(const char *id, String *setting);
+bool32 ForeachSettingCategory(const char *id, String *category);
+#endif
 
 void Super(int32 objectID, ModSuper callback, void *data);
 
@@ -286,6 +342,93 @@ void StateMachineRun(void (*state)());
 bool32 HandleRunState_HighPriority(void *state);
 void HandleRunState_LowPriority(void *state, bool32 skipState);
 void RegisterStateHook(void (*state)(), bool32 (*hook)(bool32 skippedState), bool32 priority);
+
+#if RETRO_MOD_LOADER_VER >= 2
+
+// Files
+bool32 ExcludeFile(const char *id, const char *path);
+bool32 ExcludeAllFiles(const char *id);
+bool32 ReloadFile(const char *id, const char *path);
+bool32 ReloadAllFiles(const char *id);
+
+// Graphics
+inline void *GetSpriteAnimation(uint16 id)
+{
+    if (id >= SPRFILE_COUNT)
+        return NULL;
+    return &spriteAnimationList[id];
+}
+inline void *GetSpriteSurface(uint16 id)
+{
+    if (id >= SURFACE_COUNT)
+        return NULL;
+    return &gfxSurface[id];
+}
+inline uint16 *GetPaletteBank(uint8 id)
+{
+    if (id >= PALETTE_BANK_COUNT)
+        return NULL;
+    return fullPalette[id];
+}
+inline uint8 *GetActivePaletteBuffer() { return gfxLineBuffer; }
+inline void GetRGB32To16Buffer(uint16 **rgb32To16_R, uint16 **rgb32To16_G, uint16 **rgb32To16_B)
+{
+    if (rgb32To16_R)
+        *rgb32To16_R = RSDK::rgb32To16_R;
+
+    if (rgb32To16_G)
+        *rgb32To16_G = RSDK::rgb32To16_G;
+
+    if (rgb32To16_B)
+        *rgb32To16_B = RSDK::rgb32To16_B;
+}
+inline uint16 *GetBlendLookupTable() { return blendLookupTable; }
+inline uint16 *GetSubtractLookupTable() { return subtractLookupTable; }
+inline color GetMaskColor() { return maskColor; }
+inline void *GetScanEdgeBuffer() { return scanEdgeBuffer; }
+inline void *GetCamera(uint8 id)
+{
+    if (id >= CAMERA_COUNT)
+        return NULL;
+    return &cameras[id];
+}
+inline void *GetShader(uint8 id)
+{
+    if (id >= SHADER_COUNT)
+        return NULL;
+    return &shaderList[id];
+}
+inline void *GetModel(uint16 id)
+{
+    if (id >= MODEL_COUNT)
+        return NULL;
+    return &modelList[id];
+}
+inline void *GetScene3D(uint16 id)
+{
+    if (id >= SCENE3D_COUNT)
+        return NULL;
+    return &scene3DList[id];
+}
+
+// Audio
+inline void *GetSfxEntry(uint16 id)
+{
+    if (id >= SFX_COUNT)
+        return NULL;
+    return &sfxList[id];
+}
+inline void *GetChannel(uint8 id)
+{
+    if (id >= CHANNEL_COUNT)
+        return NULL;
+    return &channels[id];
+}
+
+// Objects/Entities
+bool32 GetGroupEntities(uint16 group, void **entity);
+#endif
+
 #endif
 
 #if RETRO_REV0U
@@ -293,5 +436,150 @@ void RegisterStateHook(void (*state)(), bool32 (*hook)(bool32 skippedState), boo
 #endif
 
 } // namespace RSDK
+
+#if RETRO_USE_MOD_LOADER && RETRO_PLATFORM == RETRO_ANDROID
+#if _INTELLISENSE_ANDROID
+#include "RetroEngine.hpp"
+#endif
+
+#include <iterator>
+#include <cstddef>
+#include <forward_list>
+
+extern jmethodID fsExists;
+extern jmethodID fsIsDir;
+extern jmethodID fsDirIter;
+extern jmethodID fsRecurseIter;
+
+namespace fs
+{
+struct filesystem_error {
+    const char *what() { return err.c_str(); }
+
+private:
+    std::string err;
+};
+
+struct path {
+    path() = default;
+    path(std::string str) : pathStr(str){};
+    const std::string &string() const { return pathStr; }
+    path filename() { return pathStr.substr(pathStr.find_last_of('/') + 1); }
+
+private:
+    std::string pathStr = "";
+};
+
+bool exists(path path);
+
+bool is_directory(path path);
+
+struct directory_entry {
+    directory_entry() = default;
+    directory_entry(fs::path p) : m_path(p){};
+
+    bool exists() { return fs::exists(m_path); }
+
+    bool is_directory() { return fs::is_directory(m_path); }
+
+    bool is_regular_file() { return !fs::is_directory(m_path); }
+
+    const path &path() { return m_path; }
+
+private:
+    fs::path m_path;
+};
+
+class path_list : public std::vector<directory_entry>
+{
+public:
+    path_list(jobjectArray array)
+    {
+        vector();
+        auto *jni = GetJNISetup();
+        int len   = jni->env->GetArrayLength(array);
+        for (int i = 0; i < len; ++i) {
+            jstring jstr    = (jstring)jni->env->GetObjectArrayElement(array, i);
+            const char *str = jni->env->GetStringUTFChars(jstr, NULL);
+            this->push_back(directory_entry(std::string(str)));
+            jni->env->ReleaseStringUTFChars(jstr, str);
+        }
+    }
+};
+
+enum class directory_options { follow_directory_symlink = 0 };
+
+path_list directory_iterator(path path);
+
+class recursive_directory_iterator
+{
+    struct JNISetup *jni = nullptr;
+    directory_entry current;
+
+    jstring jstr;
+    const char* str = nullptr;
+
+    jbyteArray jpath;
+
+public:
+    using iterator_category = std::input_iterator_tag;
+    using value_type        = directory_entry;
+    using difference_type   = ptrdiff_t;
+    using pointer           = const directory_entry *;
+    using reference         = const directory_entry &;
+    
+    recursive_directory_iterator() = default;
+    recursive_directory_iterator(path path, directory_options _)
+    {
+        (void)_;
+        jni = GetJNISetup();
+        jpath = jni->env->NewByteArray(path.string().length());
+        jni->env->SetByteArrayRegion(jpath, 0, path.string().length(), (jbyte *)path.string().c_str());
+        operator++();
+    };
+
+    // this class is modified from the MSVC headers LMAO
+
+    bool operator==(const recursive_directory_iterator& rhs) const noexcept {
+        return jni == rhs.jni;
+    }
+    bool operator!=(const recursive_directory_iterator& rhs) const noexcept {
+        return jni != rhs.jni;
+    }
+    const directory_entry& operator*() const noexcept {
+        return current;
+    }
+
+    const directory_entry* operator->() const noexcept {
+        return &**this;
+    }
+
+    recursive_directory_iterator& operator++() {
+        if (str) {
+            jni->env->ReleaseStringUTFChars(jstr, str);
+        }
+        jstr = (jstring)jni->env->CallObjectMethod(jni->thiz, fsRecurseIter, jpath);
+        if (jstr == NULL) {
+            *this = {};
+        }
+        else {
+            str = jni->env->GetStringUTFChars(jstr, NULL);
+            current = directory_entry(fs::path(str));
+        }
+        return *this;
+    }
+
+    inline recursive_directory_iterator begin() noexcept {
+        return *this;
+    }
+
+    inline recursive_directory_iterator end() noexcept {
+        return {};
+    }
+
+};
+
+}; // namespace fs
+#endif
 
 #endif // !MOD_API_H

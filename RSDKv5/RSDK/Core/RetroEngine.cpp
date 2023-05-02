@@ -1,10 +1,11 @@
 #include "RSDK/Core/RetroEngine.hpp"
 
+using namespace RSDK;
+
 #if RETRO_REV0U
 #include "Legacy/RetroEngineLegacy.cpp"
 #endif
 
-using namespace RSDK;
 
 LogicLinkHandle RSDK::linkGameLogic = NULL;
 
@@ -28,19 +29,36 @@ int32 RSDK::RunRetroEngine(int32 argc, char *argv[])
 
     if (engine.consoleEnabled)
         InitConsole();
-
     RenderDevice::isRunning = false;
+
     if (InitStorage()) {
         SKU::InitUserCore();
         LoadSettingsINI();
 
 #if RETRO_USE_MOD_LOADER
+        // do it early so we can render funny little loading bar for mods
+        int32 shader = videoSettings.shaderID;
+        strcpy(gameVerInfo.gameTitle, "RSDK" ENGINE_V_NAME);
+        if (RenderDevice::Init()) {
+            RenderDevice::isRunning   = true;
+            currentScreen             = &screens[0];
+            videoSettings.screenCount = 1;
+        }
+        else {
+            // No render device, throw a "QUIT" msg onto the message loop and call it a day :)
+            SendQuitMsg();
+        }
+#if RETRO_PLATFORM == RETRO_ANDROID
+        // wait until we have a window
+        while (!RenderDevice::window) {
+            RenderDevice::ProcessEvents();
+        }
+#endif
+
 #if RETRO_REV0U
         engine.version = 0;
-        InitModAPI(); // setup mods & the mod API table
+        InitModAPI(true); // check for versions
         engine.version = 5;
-#else
-        InitModAPI(); // setup mods & the mod API table
 #endif
 #endif
 
@@ -61,19 +79,22 @@ int32 RSDK::RunRetroEngine(int32 argc, char *argv[])
         }
 
         InitEngine();
-
+#if RETRO_USE_MOD_LOADER
+        // we confirmed the game actually is valid & running, lets start some callbacks
+        RunModCallbacks(MODCB_ONGAMESTARTUP, NULL);
+        videoSettings.shaderID = shader;
+        RenderDevice::InitShaders();
+        RenderDevice::SetWindowTitle();
+        RenderDevice::lastShaderID = -1;
+#else
         if (RenderDevice::Init()) {
             RenderDevice::isRunning = true;
-
-#if RETRO_USE_MOD_LOADER
-            // we confirmed the game actually is valid & running, lets start some callbacks
-            RunModCallbacks(MODCB_ONGAMESTARTUP, NULL);
-#endif
         }
         else {
             // No render device, throw a "QUIT" msg onto the message loop and call it a day :)
             SendQuitMsg();
         }
+#endif
     }
 
     RenderDevice::InitFPSCap();
@@ -161,7 +182,7 @@ int32 RSDK::RunRetroEngine(int32 argc, char *argv[])
 #endif
                         devMenu.modsChanged = false;
                         SaveMods();
-                        RefreshModFolders();
+                        RefreshModFolders(true);
                         LoadModSettings();
                         for (int32 c = 0; c < CHANNEL_COUNT; ++c) StopChannel(c);
 #if RETRO_REV02
@@ -248,6 +269,10 @@ int32 RSDK::RunRetroEngine(int32 argc, char *argv[])
 #endif
                 }
 
+#if RETRO_PLATFORM == RETRO_ANDROID
+                HideLoadingIcon(); // best spot to do it
+#endif
+
                 if (videoSettings.windowState != WINDOWSTATE_ACTIVE)
                     continue;
 
@@ -324,13 +349,20 @@ void RSDK::ProcessEngine()
             }
             else {
 #if RETRO_USE_MOD_LOADER
-                RefreshModFolders();
+                if (devMenu.modsChanged)
+                    RefreshModFolders();
 #endif
                 LoadSceneFolder();
                 LoadSceneAssets();
                 InitObjects();
 
 #if RETRO_REV02
+#if !RETRO_USE_ORIGINAL_CODE
+                AddViewableVariable("Show Hitboxes", &showHitboxes, VIEWVAR_BOOL, false, true);
+                AddViewableVariable("Show Palettes", &engine.showPaletteOverlay, VIEWVAR_BOOL, false, true);
+                AddViewableVariable("Show Obj Range", &engine.showUpdateRanges, VIEWVAR_UINT8, 0, 2);
+                AddViewableVariable("Show Obj Info", &engine.showEntityInfo, VIEWVAR_UINT8, 0, 2);
+#endif
                 SKU::userCore->StageLoad();
                 for (int32 v = 0; v < DRAWGROUP_COUNT; ++v)
                     AddViewableVariable(drawGroupNames[v], &engine.drawGroupVisible[v], VIEWVAR_BOOL, false, true);
@@ -344,6 +376,7 @@ void RSDK::ProcessEngine()
                 SKU::LoadAchievementAssets();
 #endif
             }
+
             break;
 
         case ENGINESTATE_REGULAR:
@@ -365,6 +398,7 @@ void RSDK::ProcessEngine()
             SKU::ProcessAchievements();
 #endif
             ProcessObjectDrawLists();
+
             break;
 
         case ENGINESTATE_PAUSED:
@@ -403,13 +437,20 @@ void RSDK::ProcessEngine()
 
         case ENGINESTATE_LOAD | ENGINESTATE_STEPOVER:
 #if RETRO_USE_MOD_LOADER
-            RefreshModFolders();
+            if (devMenu.modsChanged)
+                RefreshModFolders();
 #endif
             LoadSceneFolder();
             LoadSceneAssets();
             InitObjects();
 
 #if RETRO_REV02
+#if !RETRO_USE_ORIGINAL_CODE
+            AddViewableVariable("Show Hitboxes", &showHitboxes, VIEWVAR_BOOL, false, true);
+            AddViewableVariable("Show Palettes", &engine.showPaletteOverlay, VIEWVAR_BOOL, false, true);
+            AddViewableVariable("Show Obj Range", &engine.showUpdateRanges, VIEWVAR_UINT8, 0, 2);
+            AddViewableVariable("Show Obj Info", &engine.showEntityInfo, VIEWVAR_UINT8, 0, 2);
+#endif
             SKU::userCore->StageLoad();
             for (int32 v = 0; v < DRAWGROUP_COUNT; ++v)
                 AddViewableVariable(drawGroupNames[v], &engine.drawGroupVisible[v], VIEWVAR_BOOL, false, true);
@@ -588,6 +629,10 @@ void RSDK::ParseArguments(int32 argc, char *argv[])
 
 void RSDK::InitEngine()
 {
+#if RETRO_PLATFORM == RETRO_ANDROID
+    ShowLoadingIcon(); // if valid
+#endif
+
 #if RETRO_REV0U
     switch (engine.version) {
         case 5:
@@ -623,7 +668,7 @@ void RSDK::InitEngine()
 
             Legacy::v4::LoadGameConfig("Data/Game/GameConfig.bin");
             if (!useDataPack)
-                sprintf_s(gameVerInfo.gameTitle, (int32)sizeof(gameVerInfo.gameTitle), "%s (Data Folder)", gameVerInfo.gameTitle);
+                sprintf_s(gameVerInfo.gameTitle, sizeof(gameVerInfo.gameTitle), "%s (Data Folder)", gameVerInfo.gameTitle);
             strcpy(gameVerInfo.version, "Legacy v4 Mode");
 
             RSDK::GenerateBlendLookupTable();
@@ -639,11 +684,11 @@ void RSDK::InitEngine()
 
             Legacy::CalculateTrigAnglesM7();
 
-            engine.gamePlatform      = "Standard";
+            engine.gamePlatform      = (RETRO_DEVICETYPE == RETRO_STANDARD ? "Standard" : "Mobile");
             engine.gameRenderType    = "SW_Rendering";
             engine.gameHapticSetting = "No_Haptics";
 #if !RETRO_USE_ORIGINAL_CODE
-            engine.releaseType = (engine.gameReleaseID ? "Use_Origins" : "Use_Standlone");
+            engine.releaseType = (engine.gameReleaseID ? "Use_Origins" : "Use_Standalone");
 
             Legacy::deviceType = RETRO_DEVICETYPE;
             switch (RETRO_PLATFORM) {
@@ -664,7 +709,7 @@ void RSDK::InitEngine()
 
             Legacy::v3::LoadGameConfig("Data/Game/GameConfig.bin");
             if (!useDataPack)
-                sprintf_s(gameVerInfo.gameTitle, (int32)sizeof(gameVerInfo.gameTitle), "%s (Data Folder)", gameVerInfo.gameTitle);
+                sprintf_s(gameVerInfo.gameTitle, sizeof(gameVerInfo.gameTitle), "%s (Data Folder)", gameVerInfo.gameTitle);
             strcpy(gameVerInfo.version, "Legacy v3 Mode");
 
             RSDK::GenerateBlendLookupTable();
@@ -677,6 +722,9 @@ void RSDK::InitEngine()
 #endif
     engine.initialized = true;
     engine.hardPause   = false;
+#if RETRO_PLATFORM == RETRO_ANDROID
+    SetLoadingIcon();
+#endif
 }
 
 void RSDK::StartGameObjects()
@@ -840,7 +888,7 @@ int32 RSDK::LoadXMLStages(int32 mode, int32 gcListCount, int32 gcStageCount)
                             if (nameAttr)
                                 lstName = nameAttr->Value();
 
-                            sprintf_s(list->name, (int32)sizeof(list->name), "%s", lstName);
+                            sprintf_s(list->name, sizeof(list->name), "%s", lstName);
                             GEN_HASH_MD5(list->name, list->hash);
 
                             list->sceneOffsetStart = gcStageCount;
@@ -875,10 +923,10 @@ int32 RSDK::LoadXMLStages(int32 mode, int32 gcListCount, int32 gcStageCount)
 
                                     SceneListEntry *scene = &sceneInfo.listData[gcStageCount];
 
-                                    sprintf_s(scene->name, (int32)sizeof(scene->name), "%s", stgName);
+                                    sprintf_s(scene->name, sizeof(scene->name), "%s", stgName);
                                     GEN_HASH_MD5(scene->name, scene->hash);
-                                    sprintf_s(scene->folder, (int32)sizeof(scene->folder), "%s", stgFolder);
-                                    sprintf_s(scene->id, (int32)sizeof(scene->id), "%s", stgID);
+                                    sprintf_s(scene->folder, sizeof(scene->folder), "%s", stgFolder);
+                                    sprintf_s(scene->id, sizeof(scene->id), "%s", stgID);
 
 #if RETRO_REV02
                                     scene->filter = stgFilter;
@@ -937,7 +985,7 @@ void RSDK::LoadGameConfig()
 
         ReadString(&info, gameVerInfo.gameTitle);
         if (!useDataPack)
-            sprintf_s(gameVerInfo.gameTitle, (int32)sizeof(gameVerInfo.gameTitle), "%s (Data Folder)", gameVerInfo.gameTitle);
+            sprintf_s(gameVerInfo.gameTitle, sizeof(gameVerInfo.gameTitle), "%s (Data Folder)", gameVerInfo.gameTitle);
         ReadString(&info, gameVerInfo.gameSubtitle);
         ReadString(&info, gameVerInfo.version);
 
@@ -1130,7 +1178,7 @@ void RSDK::InitGameLink()
     globalObjectCount = TYPE_DEFAULT_COUNT;
 
 #if RETRO_REV02
-    GameInfo info;
+    EngineInfo info;
 
     info.functionTable = RSDKFunctionTable;
     info.APITable      = APIFunctionTable;
@@ -1154,7 +1202,7 @@ void RSDK::InitGameLink()
     info.modTable = modFunctionTable;
 #endif
 #else
-    GameInfo info;
+    EngineInfo info;
 
     info.functionTable = RSDKFunctionTable;
 
@@ -1371,7 +1419,9 @@ void RSDK::InitCoreAPI()
 #endif
 
 #ifdef __SWITCH__
-    // initNxLink();
+    Result res;
+    if (R_FAILED(res = dynInitialize()))
+        diagAbortWithResult(res);
 #endif
 
 #if RETRO_RENDERDEVICE_SDL2 || RETRO_AUDIODEVICE_SDL2 || RETRO_INPUTDEVICE_SDL2
@@ -1385,7 +1435,7 @@ void RSDK::ReleaseCoreAPI()
 #endif
 
 #ifdef __SWITCH__
-    // socketExit();
+    dynExit();
 #endif
 }
 

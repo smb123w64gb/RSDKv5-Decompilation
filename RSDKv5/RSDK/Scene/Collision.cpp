@@ -1,10 +1,10 @@
 #include "RSDK/Core/RetroEngine.hpp"
 
+using namespace RSDK;
+
 #if RETRO_REV0U
 #include "Legacy/CollisionLegacy.cpp"
 #endif
-
-using namespace RSDK;
 
 #if RETRO_REV0U
 // Not sure why its 8.0 in v5U, it's 4.0 in v5 and v4, the "fix" is here since 8.0 causes issues with chibi due to his lil hitbox
@@ -106,7 +106,7 @@ int32 RSDK::AddDebugHitbox(uint8 type, uint8 dir, Entity *entity, Hitbox *hitbox
 }
 #endif
 
-#if RETRO_REV0U
+#if RETRO_REV0U || RETRO_USE_MOD_LOADER
 void RSDK::CopyCollisionMask(uint16 dst, uint16 src, uint8 cPlane, uint8 cMode)
 {
     CollisionMask *srcMask = NULL;
