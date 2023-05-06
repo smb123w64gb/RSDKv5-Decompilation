@@ -289,7 +289,11 @@ bool32 RSDK::LoadFile(FileInfo *info, const char *filename, uint8 fileMode)
 #if RETRO_PLATFORM == RETRO_OSX || RETRO_PLATFORM == RETRO_ANDROID || RETRO_PLATFORM == RETRO_3DS
 
 #if RETRO_PLATFORM == RETRO_3DS
+#if RETRO_USE_MOD_LOADER
+    addPath = true;
+#else
     bool32 addPath = true;
+#endif
 
     /*
     if (useDataPack)

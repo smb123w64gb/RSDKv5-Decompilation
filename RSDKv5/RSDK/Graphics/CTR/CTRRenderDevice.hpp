@@ -34,9 +34,14 @@ public:
 
   static void GetWindowSize(int32* width, int32* height);
 
-  static void LoadShader(const char* fileName, bool32 linear);
-private:
   static bool InitShaders();
+  static void LoadShader(const char* fileName, bool32 linear);
+
+  static inline void ShowCursor(bool32 shown) {}
+  static inline bool GetCursorPos(Vector2 *pos) { return false; }
+  static inline void SetWindowTitle() {}
+
+private:
   static bool SetupRendering();
   static void InitVertexBuffer();
   static bool InitGraphicsAPI();
