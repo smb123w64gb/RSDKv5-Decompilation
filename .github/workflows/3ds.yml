@@ -39,7 +39,7 @@ jobs:
           cd ../Sonic-Mania-Decompilation
           mkdir build
           cd build
-          cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/3DS.cmake -DGAME_STATIC=ON -DRSDK_PATH="dependencies/v5_3DS" -DRETRO_DISABLE_PLUS=ON -DRETRO_MOD_LOADER=OFF
+          cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/3DS.cmake -DGAME_STATIC=ON -DRSDK_PATH="dependencies/v5_3DS" -DRETRO_DISABLE_PLUS=ON
           make -j$(nproc)
           echo Build done.
 

@@ -10,9 +10,7 @@ if(NOT GAME_STATIC)
     message(FATAL_ERROR "GAME_STATIC must be on")
 endif()
 
-# Disabling the mod loader is currently broken, it won't disable it in the Mania code (upstream bug)
-# Need to manually add -DRETRO_MOD_LOADER=OFF to the cmake build command for now
-# set(RETRO_MOD_LOADER OFF CACHE BOOL "Disable the mod loader" FORCE)
+set(RETRO_MOD_LOADER OFF CACHE BOOL "Disable the mod loader" FORCE)
 
 pkg_check_modules(OGG ogg)
 
