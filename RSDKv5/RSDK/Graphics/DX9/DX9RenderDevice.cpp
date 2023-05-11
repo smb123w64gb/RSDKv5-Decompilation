@@ -705,20 +705,20 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
 
     ShaderEntry *shader = &shaderList[shaderCount];
     shader->linear      = linear;
-    sprintf_s(shader->name, (int32)sizeof(shader->name), "%s", fileName);
+    sprintf_s(shader->name, sizeof(shader->name), "%s", fileName);
 
     const D3D_SHADER_MACRO defines[] = {
 #if RETRO_REV02
-        "RETRO_REV02",
-        "1",
+        { "RETRO_REV02" },
+        { "1" },
 #endif
-        NULL,
-        NULL
+        { NULL },
+        { NULL }
     };
 
 #if !RETRO_USE_ORIGINAL_CODE
     // Try to compile the vertex shader source if it exists
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Shaders/DX9/%s.hlsl", fileName);
+    sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Shaders/DX9/%s.hlsl", fileName);
     InitFileInfo(&info);
     if (LoadFile(&info, fullFilePath, FMODE_RB)) {
         uint8 *fileData = NULL;
@@ -740,6 +740,8 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
         ID3DBlob *errorBlob  = nullptr;
         HRESULT result = D3DCompile(fileData, info.fileSize, fullFilePath, defines, NULL, "VSMain", "vs_3_0", flags, 0, &shaderBlob, &errorBlob);
 
+        RemoveStorageEntry((void **)&fileData);
+
         if (FAILED(result)) {
             if (errorBlob) {
                 PrintLog(PRINT_NORMAL, "ERROR COMPILING VERTEX SHADER: %s", (char *)errorBlob->GetBufferPointer());
@@ -749,7 +751,6 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
             if (shaderBlob)
                 shaderBlob->Release();
 
-            fileData = NULL;
             return;
         }
         else {
@@ -763,17 +764,14 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
                     shader->vertexShaderObject = NULL;
                 }
 
-                fileData = NULL;
                 return;
             }
         }
-
-        fileData = NULL;
     }
     else {
 #endif
         // if the vertex shader source doesn't exist, fall back and try to load the vertex shader bytecode
-        sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Shaders/CSO-DX9/%s.vso", fileName);
+        sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Shaders/CSO-DX9/%s.vso", fileName);
         InitFileInfo(&info);
         if (LoadFile(&info, fullFilePath, FMODE_RB)) {
             uint8 *fileData = NULL;
@@ -787,11 +785,11 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
                     shader->vertexShaderObject = NULL;
                 }
 
-                fileData = NULL;
+                RemoveStorageEntry((void **)&fileData);
                 return;
             }
 
-            fileData = NULL;
+            RemoveStorageEntry((void **)&fileData);
         }
 
 #if !RETRO_USE_ORIGINAL_CODE
@@ -800,7 +798,7 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
 
 #if !RETRO_USE_ORIGINAL_CODE
     // Try to compile the pixel shader source if it exists
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Shaders/DX9/%s.hlsl", fileName);
+    sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Shaders/DX9/%s.hlsl", fileName);
     InitFileInfo(&info);
     if (LoadFile(&info, fullFilePath, FMODE_RB)) {
         uint8 *fileData = NULL;
@@ -822,6 +820,8 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
         ID3DBlob *errorBlob  = nullptr;
         HRESULT result = D3DCompile(fileData, info.fileSize, fullFilePath, defines, NULL, "PSMain", "ps_3_0", flags, 0, &shaderBlob, &errorBlob);
 
+        RemoveStorageEntry((void **)&fileData);
+
         if (FAILED(result)) {
             if (errorBlob) {
                 PrintLog(PRINT_NORMAL, "ERROR COMPILING PIXEL SHADER:\n%s", (char *)errorBlob->GetBufferPointer());
@@ -842,17 +842,14 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
                     shader->vertexShaderObject = NULL;
                 }
 
-                fileData = NULL;
                 return;
             }
         }
-
-        fileData = NULL;
     }
     else {
 #endif
         // if the pixel shader source doesn't exist, fall back and try to load the pixel shader bytecode
-        sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Shaders/CSO-DX9/%s.fso", fileName);
+        sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Shaders/CSO-DX9/%s.fso", fileName);
         InitFileInfo(&info);
         if (LoadFile(&info, fullFilePath, FMODE_RB)) {
             uint8 *fileData = NULL;
@@ -866,11 +863,11 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
                     shader->pixelShaderObject = NULL;
                 }
 
-                fileData = NULL;
+                RemoveStorageEntry((void **)&fileData);
                 return;
             }
 
-            fileData = NULL;
+            RemoveStorageEntry((void **)&fileData);
         }
 
 #if !RETRO_USE_ORIGINAL_CODE
@@ -892,6 +889,11 @@ bool RenderDevice::InitShaders()
     dx9Device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
 
     int32 maxShaders = 0;
+#if RETRO_USE_MOD_LOADER
+    // this causes small memleaks here and in other render devices, as we never close the existing shaders
+    // TODO: fix? 🤨
+    shaderCount = 0;
+#endif
     if (videoSettings.shaderSupport) {
         LoadShader("None", false);
         LoadShader("Clean", true);
@@ -1107,17 +1109,7 @@ void RenderDevice::ProcessEvent(MSG Msg)
 
                     handledMsg = true;
                     break;
-
-                case VK_F10:
-                    if (engine.devMenu) {
-                        engine.showPaletteOverlay ^= 1;
-
-                        handledMsg = true;
-                    }
-                    break;
             }
-
-            break;
         }
 
         // regular keydown
@@ -1182,7 +1174,8 @@ void RenderDevice::ProcessEvent(MSG Msg)
                 case VK_F1:
                     if (engine.devMenu) {
                         sceneInfo.listPos--;
-                        if (sceneInfo.listPos < sceneInfo.listCategory[sceneInfo.activeCategory].sceneOffsetStart) {
+                        if (sceneInfo.listPos < sceneInfo.listCategory[sceneInfo.activeCategory].sceneOffsetStart
+                            || sceneInfo.listPos >= sceneInfo.listCategory[sceneInfo.activeCategory].sceneOffsetEnd) {
                             sceneInfo.activeCategory--;
                             if (sceneInfo.activeCategory >= sceneInfo.categoryCount) {
                                 sceneInfo.activeCategory = sceneInfo.categoryCount - 1;
@@ -1208,7 +1201,7 @@ void RenderDevice::ProcessEvent(MSG Msg)
                 case VK_F2:
                     if (engine.devMenu) {
                         sceneInfo.listPos++;
-                        if (sceneInfo.listPos >= sceneInfo.listCategory[sceneInfo.activeCategory].sceneOffsetEnd) {
+                        if (sceneInfo.listPos >= sceneInfo.listCategory[sceneInfo.activeCategory].sceneOffsetEnd || sceneInfo.listPos == 0) {
                             sceneInfo.activeCategory++;
                             if (sceneInfo.activeCategory >= sceneInfo.categoryCount) {
                                 sceneInfo.activeCategory = 0;
@@ -1241,9 +1234,21 @@ void RenderDevice::ProcessEvent(MSG Msg)
                     break;
 
 #if !RETRO_USE_ORIGINAL_CODE
+                case VK_F4:
+                    if (engine.devMenu) {
+                        engine.showEntityInfo ^= 1;
+
+                        handledMsg = true;
+                    }
+                    break;
+
                 case VK_F5:
                     if (engine.devMenu) {
                         // Quick-Reload
+#if RETRO_USE_MOD_LOADER
+                        if (GetAsyncKeyState(VK_CONTROL))
+                            RefreshModFolders();
+#endif
 
 #if RETRO_REV0U
                         switch (engine.version) {
@@ -1271,6 +1276,14 @@ void RenderDevice::ProcessEvent(MSG Msg)
                 case VK_F7:
                     if (engine.devMenu && videoSettings.screenCount < SCREEN_COUNT) {
                         videoSettings.screenCount++;
+
+                        handledMsg = true;
+                    }
+                    break;
+
+                case VK_F8:
+                    if (engine.devMenu) {
+                        engine.showUpdateRanges ^= 1;
 
                         handledMsg = true;
                     }
@@ -1334,12 +1347,12 @@ void RenderDevice::ProcessEvent(MSG Msg)
         case WM_SYSKEYUP: {
             WPARAM activeButtons = Msg.wParam;
             switch (Msg.wParam) {
-                case VK_SHIFT: activeButtons = MapVirtualKey(((Msg.lParam >> 8) & 0xFF), MAPVK_VSC_TO_VK_EX); break;
+                case VK_SHIFT: activeButtons = MapVirtualKey(((Msg.lParam >> 16) & 0xFF), MAPVK_VSC_TO_VK_EX); break;
 
-                case VK_CONTROL: activeButtons = VK_LCONTROL + ((Msg.lParam >> 8) & 1); break;
+                case VK_CONTROL: activeButtons = VK_LCONTROL + ((Msg.lParam >> 24) & 1); break;
 
                 case VK_MENU: // ALT key
-                    activeButtons = VK_LMENU + ((Msg.lParam >> 8) & 1);
+                    activeButtons = VK_LMENU + ((Msg.lParam >> 24) & 1);
                     break;
             }
 

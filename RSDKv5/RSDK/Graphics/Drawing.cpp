@@ -1,10 +1,10 @@
 #include "RSDK/Core/RetroEngine.hpp"
 
+using namespace RSDK;
+
 #if RETRO_REV0U
 #include "Legacy/DrawingLegacy.cpp"
 #endif
-
-using namespace RSDK;
 
 // all render devices need to access the initial vertex buffer :skull:
 
@@ -67,7 +67,7 @@ const RenderVertex rsdkVertexBuffer[60] = {
     { {  1.0,  1.0,  1.0 }, 0xFFFFFFFF, {  0.625,  0.0 } },
     { {  1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.625,  0.9375 } },
     
-    // 4 Screens (Bottom-Right) (48)
+    // 4 Screens (Bottom-Right) (42)
     { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
     { { -1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.9375 } },
     { {  0.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.625,  0.9375 } },
@@ -75,7 +75,7 @@ const RenderVertex rsdkVertexBuffer[60] = {
     { {  0.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.625,  0.0 } },
     { {  0.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.625,  0.9375 } },
     
-    // 4 Screens (Bottom-Left) (42)
+    // 4 Screens (Bottom-Left) (48)
     { {  0.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
     { {  0.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.9375 } },
     { {  1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.625,  0.9375 } },
@@ -133,12 +133,12 @@ const RenderVertex rsdkVertexBuffer[24] =
 #include "DX9/DX9RenderDevice.cpp"
 #elif RETRO_RENDERDEVICE_DIRECTX11
 #include "DX11/DX11RenderDevice.cpp"
-#elif RETRO_RENDERDEVICE_NX
-#include "NX/NXRenderDevice.cpp"
 #elif RETRO_RENDERDEVICE_SDL2
 #include "SDL2/SDL2RenderDevice.cpp"
 #elif RETRO_RENDERDEVICE_GLFW
 #include "GLFW/GLFWRenderDevice.cpp"
+#elif RETRO_RENDERDEVICE_VK
+#include "Vulkan/VulkanRenderDevice.cpp"
 #elif RETRO_RENDERDEVICE_EGL
 #include "EGL/EGLRenderDevice.cpp"
 #elif RETRO_RENDERDEVICE_CTR
@@ -243,15 +243,15 @@ void RSDK::RenderDeviceBase::ProcessDimming()
     // initialize dimLimit before ProcessStage(), maybe in RenderDevice::SetupRendering() or something
 
     if (videoSettings.dimTimer < videoSettings.dimLimit) {
-        if (videoSettings.dimPercent < 1.0) {
+        if (videoSettings.dimPercent < 1.0f) {
             videoSettings.dimPercent += 0.05f;
 
-            if (videoSettings.dimPercent > 1.0)
-                videoSettings.dimPercent = 1.0;
+            if (videoSettings.dimPercent > 1.0f)
+                videoSettings.dimPercent = 1.0f;
         }
     }
     else {
-        if (videoSettings.dimPercent > 0.25)
+        if (videoSettings.dimPercent > 0.25f)
             videoSettings.dimPercent *= 0.9f;
     }
 }
@@ -561,7 +561,7 @@ void RSDK::SetVideoSetting(int32 id, int32 value)
     }
 }
 
-void RSDK::SwapDrawListEntries(uint8 drawGroup, uint16 slot1, uint16 slot2, int32 count)
+void RSDK::SwapDrawListEntries(uint8 drawGroup, uint16 slot1, uint16 slot2, uint16 count)
 {
     if (drawGroup < DRAWGROUP_COUNT) {
         DrawList *group = &drawGroups[drawGroup];
@@ -674,11 +674,9 @@ void RSDK::DrawLine(int32 x1, int32 y1, int32 x2, int32 y2, uint32 color, int32 
     else if (drawY2 < currentScreen->clipBound_Y1)
         flags2 |= 4;
 
-    int32 id = 0;
     while (flags1 || flags2) {
         if (flags1 & flags2)
             return;
-        ++id;
 
         int32 curFlags = flags2;
         if (flags1)
@@ -1347,25 +1345,19 @@ void RSDK::DrawCircle(int32 x, int32 y, int32 radius, uint32 color, int32 alpha,
         }
 
         int32 yRadiusBottom = y + radius;
-        int32 bottom        = currentScreen->clipBound_Y1;
+        int32 bottom        = yRadiusBottom + 1;
         int32 yRadiusTop    = y - radius;
-        int32 top = top = y - radius;
+        int32 top           = yRadiusTop;
 
-        if (y - radius >= bottom) {
-            top = y - radius;
-            if (top > currentScreen->clipBound_Y2)
-                top = currentScreen->clipBound_Y2;
-        }
-        else {
+        if (top < currentScreen->clipBound_Y1)
             top = currentScreen->clipBound_Y1;
-        }
+        else if (top > currentScreen->clipBound_Y2)
+            top = currentScreen->clipBound_Y2;
 
-        if (yRadiusBottom >= bottom) {
-            bottom = y + radius;
-            bottom++;
-            if (bottom > currentScreen->clipBound_Y2)
-                bottom = currentScreen->clipBound_Y2;
-        }
+        if (bottom < currentScreen->clipBound_Y1)
+            bottom = currentScreen->clipBound_Y1;
+        else if (bottom > currentScreen->clipBound_Y2)
+            bottom = currentScreen->clipBound_Y2;
 
         if (top != bottom) {
             for (int32 i = top; i < bottom; ++i) {
@@ -1377,20 +1369,16 @@ void RSDK::DrawCircle(int32 x, int32 y, int32 radius, uint32 color, int32 alpha,
             int32 xRad               = x - radius;
             int32 curY               = y;
             int32 curX               = x;
-            int32 startY             = yRadiusTop + 1;
-            ScanEdge *scanEdgeTop    = &scanEdgeBuffer[yRadiusTop];
-            ScanEdge *scanEdgeBottom = &scanEdgeBuffer[yRadiusBottom];
-            ScanEdge *scanEdge       = &scanEdgeBuffer[y];
             int32 dist               = x - y;
 
             for (int32 i = 0; i <= radius; ++i) {
                 int32 scanX = i + curX;
 
-                if (yRadiusBottom >= top && yRadiusBottom <= bottom && scanX > scanEdgeBottom->end)
-                    scanEdgeBottom->end = scanX;
+                if (yRadiusBottom >= top && yRadiusBottom <= bottom && scanX > scanEdgeBuffer[yRadiusBottom].end)
+                    scanEdgeBuffer[yRadiusBottom].end = scanX;
 
-                if (startY >= top && startY <= bottom && scanX > scanEdgeTop->end)
-                    scanEdgeTop->end = scanX;
+                if (yRadiusTop >= top && yRadiusTop <= bottom && scanX > scanEdgeBuffer[yRadiusTop].end)
+                    scanEdgeBuffer[yRadiusTop].end = scanX;
 
                 int32 scanY = i + y;
                 if (scanY >= top && scanY <= bottom) {
@@ -1399,14 +1387,14 @@ void RSDK::DrawCircle(int32 x, int32 y, int32 radius, uint32 color, int32 alpha,
                         edge->end = yRadiusBottom + dist;
                 }
 
-                if (curY >= top && curY <= bottom && yRadiusBottom + dist > scanEdge->end)
-                    scanEdge->end = yRadiusBottom + dist;
+                if (curY >= top && curY <= bottom && yRadiusBottom + dist > scanEdgeBuffer[curY].end)
+                    scanEdgeBuffer[curY].end = yRadiusBottom + dist;
 
-                if (yRadiusBottom >= top && yRadiusBottom <= bottom && x < scanEdgeBottom->start)
-                    scanEdgeBottom->start = x;
+                if (yRadiusBottom >= top && yRadiusBottom <= bottom && x < scanEdgeBuffer[yRadiusBottom].start)
+                    scanEdgeBuffer[yRadiusBottom].start = x;
 
-                if (startY >= top && startY <= bottom && x < scanEdgeTop->start)
-                    scanEdgeTop->start = x;
+                if (yRadiusTop >= top && yRadiusTop <= bottom && x < scanEdgeBuffer[yRadiusTop].start)
+                    scanEdgeBuffer[yRadiusTop].start = x;
 
                 if (scanY >= top && scanY <= bottom) {
                     ScanEdge *edge = &scanEdgeBuffer[scanY];
@@ -1414,15 +1402,13 @@ void RSDK::DrawCircle(int32 x, int32 y, int32 radius, uint32 color, int32 alpha,
                         edge->start = xRad;
                 }
 
-                if (curY >= top && curY <= bottom && xRad < scanEdge->start)
-                    scanEdge->start = xRad;
+                if (curY >= top && curY <= bottom && xRad < scanEdgeBuffer[curY].start)
+                    scanEdgeBuffer[curY].start = xRad;
 
                 if (r >= 0) {
                     --yRadiusBottom;
-                    --scanEdgeBottom;
-                    ++startY;
+                    ++yRadiusTop;
                     r += 4 * (i - radius) + 10;
-                    ++scanEdgeTop;
                     --radius;
                     ++xRad;
                 }
@@ -1430,7 +1416,6 @@ void RSDK::DrawCircle(int32 x, int32 y, int32 radius, uint32 color, int32 alpha,
                     r += 4 * i + 6;
                 }
                 --curY;
-                --scanEdge;
                 --x;
             }
 
@@ -2526,26 +2511,26 @@ void RSDK::DrawBlendedFace(Vector2 *vertices, uint32 *colors, int32 vertCount, i
                 for (int32 s = topScreen; s <= bottomScreen; ++s) {
                     int32 start  = edge->start;
                     int32 count  = edge->end - edge->start;
-                    int32 deltaR = 0;
-                    int32 deltaG = 0;
-                    int32 deltaB = 0;
-                    if (count > 0) {
-                        deltaR = (edge->endR - edge->startR) / count;
-                        deltaG = (edge->endG - edge->startG) / count;
-                        deltaB = (edge->endB - edge->startB) / count;
-                    }
-                    int32 startR = edge->startR;
-                    int32 startG = edge->startG;
-                    int32 startB = edge->startB;
+                    // int32 deltaR = 0;
+                    // int32 deltaG = 0;
+                    // int32 deltaB = 0;
+                    // if (count > 0) {
+                    //     deltaR = (edge->endR - edge->startR) / count;
+                    //     deltaG = (edge->endG - edge->startG) / count;
+                    //     deltaB = (edge->endB - edge->startB) / count;
+                    // }
+                    // int32 startR = edge->startR;
+                    // int32 startG = edge->startG;
+                    // int32 startB = edge->startB;
 
                     if (start > currentScreen->clipBound_X2) {
                         edge->start = currentScreen->clipBound_X2;
                     }
 
                     if (start < currentScreen->clipBound_X1) {
-                        startR += deltaR * (currentScreen->clipBound_X1 - edge->start);
-                        startG += deltaG * (currentScreen->clipBound_X1 - edge->start);
-                        startB += deltaB * (currentScreen->clipBound_X1 - edge->start);
+                        // startR += deltaR * (currentScreen->clipBound_X1 - edge->start);
+                        // startG += deltaG * (currentScreen->clipBound_X1 - edge->start);
+                        // startB += deltaB * (currentScreen->clipBound_X1 - edge->start);
                         count -= (currentScreen->clipBound_X1 - edge->start);
                         edge->start = currentScreen->clipBound_X1;
                     }
@@ -2562,9 +2547,9 @@ void RSDK::DrawBlendedFace(Vector2 *vertices, uint32 *colors, int32 vertCount, i
                     for (int32 x = 0; x < count; ++x) {
                         frameBuffer[edge->start + x] = tintLookupTable[frameBuffer[edge->start + x]];
 
-                        startR += deltaR;
-                        startG += deltaG;
-                        startB += deltaB;
+                        // startR += deltaR;
+                        // startG += deltaG;
+                        // startB += deltaB;
                     }
 
                     ++edge;
@@ -4057,7 +4042,7 @@ void RSDK::DrawDeformedSprite(uint16 sheetID, int32 inkEffect, int32 alpha)
             break;
 
         case INK_UNMASKED:
-            for (; clipY1 < currentScreen->clipBound_Y2; ++scanline) {
+            for (; clipY1 < currentScreen->clipBound_Y2; ++clipY1) {
                 uint16 *activePalette = fullPalette[*lineBuffer++];
                 int32 lx              = scanline->position.x;
                 int32 ly              = scanline->position.y;

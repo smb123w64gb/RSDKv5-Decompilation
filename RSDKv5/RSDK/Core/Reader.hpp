@@ -180,7 +180,7 @@ inline size_t ReadBytes(FileInfo *info, void *data, int32 count)
     if (info->encrypted)
         DecryptBytes(info, data, bytesRead);
 
-    info->readPos += bytesRead;
+    info->readPos += (int32)bytesRead;
     return bytesRead;
 }
 
@@ -203,7 +203,7 @@ inline uint8 ReadInt8(FileInfo *info)
     if (info->encrypted)
         DecryptBytes(info, &result, bytesRead);
 
-    info->readPos += bytesRead;
+    info->readPos += (int32)bytesRead;
     return result;
 }
 
@@ -247,7 +247,7 @@ inline int16 ReadInt16(FileInfo *info)
         memcpy(&buffer, bytes, sizeof(buffer));
     }
 
-    info->readPos += bytesRead;
+    info->readPos += (int32)bytesRead;
     return buffer.result;
 }
 
@@ -304,7 +304,7 @@ inline int32 ReadInt32(FileInfo *info, bool32 swapEndian)
         memcpy(&buffer, bytes, sizeof(buffer));
     }
 
-    info->readPos += bytesRead;
+    info->readPos += (int32)bytesRead;
     return buffer.result;
 }
 inline int64 ReadInt64(FileInfo *info)
@@ -347,7 +347,7 @@ inline int64 ReadInt64(FileInfo *info)
         memcpy(&buffer, bytes, sizeof(buffer));
     }
 
-    info->readPos += bytesRead;
+    info->readPos += (int32)bytesRead;
     return buffer.result;
 }
 
@@ -391,7 +391,7 @@ inline float ReadSingle(FileInfo *info)
         memcpy(&buffer, bytes, sizeof(buffer));
     }
 
-    info->readPos += bytesRead;
+    info->readPos += (int32)bytesRead;
     return buffer.result;
 }
 
@@ -416,6 +416,7 @@ inline int32 Uncompress(uint8 **cBuffer, int32 cSize, uint8 **buffer, int32 size
     return (int32)destLen;
 }
 
+// The buffer passed in parameter is allocated here, so it's up to the caller to free it once it goes unused
 inline int32 ReadCompressed(FileInfo *info, uint8 **buffer)
 {
     if (!buffer)

@@ -1,5 +1,7 @@
 #include "RSDK/Core/RetroEngine.hpp"
 
+using namespace RSDK;
+
 #if RETRO_REV0U
 #include "Legacy/TextLegacy.cpp"
 #endif
@@ -53,7 +55,7 @@ unsigned rol(unsigned v, int16 amt)
 
 unsigned *md5(unsigned *h, const char *msg, int32 mlen)
 {
-    static digest h0 = { 0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476 };
+    static digest h0     = { 0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476 };
     static DgstFctn ff[] = { &f0, &f1, &f2, &f3 };
     static int16 M[]     = { 1, 5, 3, 7 };
     static int16 O[]     = { 0, 1, 5, 0 };
@@ -98,12 +100,23 @@ unsigned *md5(unsigned *h, const char *msg, int32 mlen)
             //            t = u.b[0]; u.b[0] = u.b[3]; u.b[3] = t;
             //            t = u.b[1]; u.b[1] = u.b[2]; u.b[2] = t;
             q -= 8;
+#if !RETRO_USE_ORIGINAL_CODE
+            for (p = 0; p < 4; ++p) msg2[q + p] = (u.w >> (8 * p)) & 0xFF;
+#else
+            // This only works as intended on little-endian CPUs.
             memcpy(msg2 + q, &u.w, 4);
+#endif
         }
     }
 
     for (grp = 0; grp < grps; grp++) {
+#if !RETRO_USE_ORIGINAL_CODE
+        memset(&mm, 0, sizeof(mm));
+        for (p = 0; p < 64; ++p) mm.w[p / 4] |= msg2[os + p] << (8 * (p % 4));
+#else
+        // This only works as intended on little-endian CPUs.
         memcpy(mm.b, msg2 + os, 64);
+#endif
         for (q = 0; q < 4; q++) abcd[q] = h[q];
         for (p = 0; p < 4; p++) {
             fctn = ff[p];
@@ -129,8 +142,6 @@ unsigned *md5(unsigned *h, const char *msg, int32 mlen)
 
     return h;
 }
-
-using namespace RSDK;
 
 char RSDK::textBuffer[0x400];
 // Buffer is expected to be at least 16 bytes long
@@ -197,7 +208,7 @@ uint8 utf8CharSizes[] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
                           1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
                           2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6 };
 
-void RSDK::SetString(String *string, char *text)
+void RSDK::SetString(String *string, const char *text)
 {
     if (!*text)
         return;
@@ -248,14 +259,17 @@ void RSDK::SetString(String *string, char *text)
     }
 }
 
-void RSDK::AppendText(String *string, char *appendString)
+void RSDK::AppendText(String *string, const char *appendString)
 {
     if (!*appendString)
         return;
 
     int32 len     = 0;
-    char *textBuf = appendString;
-    for (int32 pos = 0; *textBuf; ++len) pos += utf8CharSizes[*textBuf++ & 0xFF];
+    const char *textBuf = appendString;
+    int32 pos;
+    for (pos = 0; *textBuf; ++len) pos += utf8CharSizes[*textBuf++ & 0xFF];
+    (void)pos;
+
     if (!len)
         return;
 
@@ -369,7 +383,7 @@ void RSDK::InitStringList(String *stringList, int32 size)
 
     for (int32 c = 0; c < size && c < stringList->length; ++c) text[c] = stringList->chars[c];
 
-    CopyStorage((int32 **)&stringList->chars, (int32 **)&text);
+    CopyStorage((uint32 **)&stringList->chars, (uint32 **)&text);
     stringList->size = size;
     if (stringList->length > (uint16)size)
         stringList->length = size;
@@ -378,7 +392,7 @@ void RSDK::InitStringList(String *stringList, int32 size)
 void RSDK::LoadStringList(String *stringList, const char *filePath, uint32 charSize)
 {
     char fullFilePath[0x40];
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Strings/%s", filePath);
+    sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Strings/%s", filePath);
 
     FileInfo info;
     InitFileInfo(&info);
@@ -388,7 +402,12 @@ void RSDK::LoadStringList(String *stringList, const char *filePath, uint32 charS
         if (header == 0xFEFF) {
             // UTF-16
             InitStringList(stringList, (info.fileSize >> 1) - 1);
+#if !RETRO_USE_ORIGINAL_CODE
+            for (int32 c = 0; c < stringList->size; ++c) stringList->chars[c] = ReadInt16(&info);
+#else
+            // This only works as intended on little-endian CPUs.
             ReadBytes(&info, stringList->chars, stringList->size * sizeof(uint16));
+#endif
             stringList->length = stringList->size;
         }
         else {

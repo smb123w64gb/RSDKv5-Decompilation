@@ -1,17 +1,20 @@
 #include "RSDK/Core/RetroEngine.hpp"
 
+using namespace RSDK;
+
 #if RETRO_REV0U
 #include "Legacy/AnimationLegacy.cpp"
 #endif
 
-using namespace RSDK;
-
 SpriteAnimation RSDK::spriteAnimationList[SPRFILE_COUNT];
 
-uint16 RSDK::LoadSpriteAnimation(const char *filePath, int32 scope)
+uint16 RSDK::LoadSpriteAnimation(const char *filePath, uint8 scope)
 {
+    if (!scope || scope > SCOPE_STAGE)
+        return -1;
+
     char fullFilePath[0x100];
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Sprites/%s", filePath);
+    sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Sprites/%s", filePath);
 
     RETRO_HASH_MD5(hash);
     GEN_HASH_MD5(filePath, hash);
@@ -108,10 +111,13 @@ uint16 RSDK::LoadSpriteAnimation(const char *filePath, int32 scope)
     return -1;
 }
 
-uint16 RSDK::CreateSpriteAnimation(const char *filename, uint32 frameCount, uint32 animCount, int32 scope)
+uint16 RSDK::CreateSpriteAnimation(const char *filename, uint32 frameCount, uint32 animCount, uint8 scope)
 {
+    if (!scope || scope > SCOPE_STAGE)
+        return -1;
+
     char fullFilePath[0x100];
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Sprites/%s", filename);
+    sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Sprites/%s", filename);
 
     RETRO_HASH_MD5(hash);
     GEN_HASH_MD5(filename, hash);
@@ -188,7 +194,7 @@ int32 RSDK::GetStringWidth(uint16 aniFrames, uint16 animID, String *string, int3
         for (int32 c = startIndex; c < length; ++c) {
             int32 charFrame = string->chars[c];
             if (charFrame < anim->frameCount) {
-                w += spr->frames[charFrame + anim->frameListOffset].width;
+                w += spr->frames[anim->frameListOffset + charFrame].width;
                 if (c + 1 >= length)
                     return w;
 
@@ -215,7 +221,7 @@ void RSDK::SetSpriteString(uint16 aniFrames, uint16 animID, String *string)
             int32 unicodeChar = string->chars[c];
             string->chars[c]  = -1;
             for (int32 f = 0; f < anim->frameCount; ++f) {
-                if (spr->frames[f + anim->frameListOffset].unicodeChar == unicodeChar) {
+                if (spr->frames[anim->frameListOffset + f].unicodeChar == unicodeChar) {
                     string->chars[c] = f;
                     break;
                 }

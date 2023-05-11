@@ -55,7 +55,7 @@ int32 RSDK::Legacy::PlayMusic(int32 trackID)
 void RSDK::Legacy::SetMusicVolume(int32 volume)
 {
     musicVolume = CLAMP(volume, 0, 100);
-    SetChannelAttributes(musicChannel, musicVolume * 0.01, 0.0, 1.0);
+    SetChannelAttributes(musicChannel, musicVolume * 0.01f, 0.f, 1.f);
 }
 
 void RSDK::Legacy::v4::SwapMusicTrack(const char *filePath, uint8 trackID, uint32 loopPoint, uint32 ratio)
@@ -79,31 +79,8 @@ void RSDK::Legacy::v4::SwapMusicTrack(const char *filePath, uint8 trackID, uint3
 
 void RSDK::Legacy::LoadSfx(char *filename, uint8 slot, uint8 scope)
 {
-    char fullFilePath[0x80];
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/SoundFX/%s", filename);
-
-    RETRO_HASH_MD5(hash);
-    GEN_HASH_MD5(filename, hash);
-
-    if (sfxList[slot].scope != SCOPE_NONE)
-        return;
-
-    uint8 type = fullFilePath[strlen(fullFilePath) - 3];
-    if (type == 'w' || type == 'W') {
-        GEN_HASH_MD5(filename, sfxList[slot].hash);
-        sfxList[slot].scope              = scope;
-        sfxList[slot].maxConcurrentPlays = 1;
-
-        uint16 channels = 0;
-        uint32 freq     = 0;
-        uint32 format   = 0;
-        uint32 size     = 0;
-        ReadSfx(fullFilePath, slot, 1, scope, &size, &format, &channels, &freq);
-    }
-    else {
-        // what the
-        PrintLog(PRINT_ERROR, "Sfx format not supported!");
-    }
+    if (sfxList[slot].scope == SCOPE_NONE)
+        LoadSfxToSlot(filename, slot, 1, scope);
 }
 
 void RSDK::Legacy::v3::SetSfxAttributes(int32 channelID, int32 loop, int8 pan)

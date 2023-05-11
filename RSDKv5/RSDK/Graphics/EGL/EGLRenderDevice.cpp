@@ -20,7 +20,8 @@
 #define _UOFF 8
 #define _VOFF 0
 #elif RETRO_PLATFORM == RETRO_ANDROID
-#define _GLVERSION "#version 100\n#extension GL_OES_standard_derivatives : enable\n#define in_V attribute\n#define out varying\n#define in_F varying\n"
+#define _GLVERSION                                                                                                                                   \
+    "#version 100\n#extension GL_OES_standard_derivatives : enable\n#define in_V attribute\n#define out varying\n#define in_F varying\n"
 
 #define GL_BGRA                     GL_RGBA
 #define GL_UNSIGNED_INT_8_8_8_8_REV GL_UNSIGNED_BYTE
@@ -41,7 +42,6 @@ char _glFPrecision[30]; // len("precision mediump float;\n") -> 25
 
 const GLchar *backupVertex = R"aa(
 in_V vec3 in_pos;
-in_V vec4 in_color;
 in_V vec2 in_UV;
 out vec4 ex_color;
 out vec2 ex_UV;
@@ -49,7 +49,7 @@ out vec2 ex_UV;
 void main()
 {
     gl_Position = vec4(in_pos, 1.0);
-    ex_color    = in_color;
+    ex_color    = vec4(1.0, 1.0, 1.0, 1.0);
     ex_UV       = in_UV;
 }
 )aa";
@@ -62,7 +62,7 @@ uniform sampler2D texDiffuse;
 
 void main()
 {
-    gl_FragColor = texture(texDiffuse, ex_UV);
+    gl_FragColor = texture2D(texDiffuse, ex_UV);
 }
 )aa";
 
@@ -116,7 +116,8 @@ bool RenderDevice::Init()
 #if RETRO_PLATFORM == RETRO_SWITCH
         EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
 #else
-        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_CONFORMANT, EGL_OPENGL_ES2_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
 #endif 
         EGL_RED_SIZE,        8, 
         EGL_GREEN_SIZE,      8, 
@@ -162,9 +163,8 @@ bool RenderDevice::SetupRendering()
         return true; // lie so we can properly swtup later
     }
     ANativeWindow_setBuffersGeometry(window, 0, 0, format);
-#if __ANDROID_API__ >= 30
-    ANativeWindow_setFrameRate(window, videoSettings.refreshRate, ANATIVEWINDOW_FRAME_RATE_COMPATIBILITY_DEFAULT);
-#endif
+    SwappyGL_setSwapIntervalNS(SWAPPY_SWAP_60FPS);
+    SwappyGL_setAutoSwapInterval(false);
 #endif
 
     surface = eglCreateWindowSurface(display, config, window, nullptr);
@@ -175,35 +175,35 @@ bool RenderDevice::SetupRendering()
 
 #if RETRO_PLATFORM == RETRO_SWITCH
     // clang-format off
-    static const EGLint attributeListList[1][7] = { {
+    static const int32 listCount = 1;
+    static const EGLint attributeListList[listCount][7] = { {
         EGL_CONTEXT_OPENGL_PROFILE_MASK, EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
         EGL_CONTEXT_MAJOR_VERSION,       4, 
         EGL_CONTEXT_MINOR_VERSION,       3,
         EGL_NONE 
     } };
-    static const int32 listCount = 1;
     int32 i = 0;
     // clang-format on
 #elif RETRO_PLATFORM == RETRO_ANDROID
-    static const EGLint attributeListList[3][5] = { { EGL_CONTEXT_MAJOR_VERSION, 2, EGL_CONTEXT_MINOR_VERSION, 0, EGL_NONE },
-                                                 { EGL_CONTEXT_MAJOR_VERSION, 3, EGL_CONTEXT_MINOR_VERSION, 0, EGL_NONE },
-                                                 { EGL_CONTEXT_MAJOR_VERSION, 3, EGL_CONTEXT_MINOR_VERSION, 1, EGL_NONE } };
-    static const int32 listCount             = 3;
-    int32 i                                  = 0;
+    static const int32 listCount                     = 1;
+    static const EGLint attributeListList[listCount][3] = { { EGL_CONTEXT_MAJOR_VERSION, 2, EGL_NONE } }; // lol. lmao
+    int32 i                                          = 0;
 #endif
 
-    context = eglCreateContext(display, config, EGL_NO_CONTEXT, attributeListList[i]);
+    context = eglCreateContext(display, config, EGL_NO_CONTEXT, (EGLint *)attributeListList[i]);
     while (!context) {
         PrintLog(PRINT_NORMAL, "[EGL] Context creation failed: %d", eglGetError());
         if (++i < listCount) {
             PrintLog(PRINT_NORMAL, "[EGL] Trying next context...");
-            context = eglCreateContext(display, config, EGL_NO_CONTEXT, attributeListList[i]);
+            context = eglCreateContext(display, config, EGL_NO_CONTEXT, (EGLint *)attributeListList[i]);
         }
         else
             return false;
     }
 
     eglMakeCurrent(display, surface, surface, context);
+    eglQueryContext(display, context, EGL_CONTEXT_CLIENT_VERSION, &i);
+    PrintLog(PRINT_NORMAL, "[EGL] Context client version: %d", i);
 
     GetDisplays();
 
@@ -266,18 +266,21 @@ bool RenderDevice::InitGraphicsAPI()
     glDisable(GL_CULL_FACE);
 
     // setup buffers
+#if RETRO_PLATFORM == RETRO_SWITCH
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
+#endif
+
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(RenderVertex) * (!RETRO_REV02 ? 24 : 60), NULL, GL_DYNAMIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(RenderVertex), 0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(RenderVertex), (void *)offsetof(RenderVertex, color));
+    // glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(RenderVertex), (void *)offsetof(RenderVertex, color));
+    // glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(RenderVertex), (void *)offsetof(RenderVertex, tex));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(RenderVertex), (void *)offsetof(RenderVertex, tex));
-    glEnableVertexAttribArray(2);
 
 #if RETRO_PLATFORM == RETRO_SWITCH
     videoSettings.fsWidth  = 1920;
@@ -323,7 +326,7 @@ bool RenderDevice::InitGraphicsAPI()
 
         screens[s].size.y = videoSettings.pixHeight;
 
-        float viewAspect  = viewSize.x / viewSize.y;
+        float viewAspect = viewSize.x / viewSize.y;
 #if !RETRO_USE_ORIGINAL_CODE
         screenWidth = (int32)((viewAspect * videoSettings.pixHeight) + 3) & 0xFFFFFFFC;
 #else
@@ -348,10 +351,15 @@ bool RenderDevice::InitGraphicsAPI()
     pixelSize.y     = screens[0].size.y;
     float pixAspect = pixelSize.x / pixelSize.y;
 
+#if RETRO_PLATFORM == RETRO_ANDROID
+    auto* jni = GetJNISetup();
+    jni->env->CallVoidMethod(jni->thiz, setPixSize, (int)pixelSize.x, (int)pixelSize.y);
+#endif
+
     Vector2 viewportPos{};
     Vector2 viewportSize{ displayWidth[0], displayHeight[0] };
 
-    if ((viewSize.x / viewSize.y) <= ((pixelSize.x / pixelSize.y) + 0.1)) {
+    if ((viewSize.x / viewSize.y) <= (pixAspect + 0.1)) {
         if ((pixAspect - 0.1) > (viewSize.x / viewSize.y)) {
             viewSize.y     = (pixelSize.y / pixelSize.x) * viewSize.x;
             viewportPos.y  = (displayHeight[0] >> 1) - (viewSize.y * 0.5);
@@ -423,47 +431,152 @@ bool RenderDevice::InitGraphicsAPI()
     return true;
 }
 
+// CUSTOM BUFFER FOR SHENANIGAN PURPOSES
+// GL hates us and it's coordinate system is reverse of DX
+// for shader output equivalency, we havee to flip everything
+// X and Y are negated, some verts are specifically moved to match
+// U and V are 0/1s and flipped from what it was originally
+// clang-format off
+#if RETRO_REV02
+const RenderVertex rsdkGLVertexBuffer[60] = {
+    // 1 Screen (0)
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    
+    // 2 Screens - Bordered (Top Screen) (6)
+    { { +0.5,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +0.5, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -0.5, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +0.5,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -0.5,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -0.5, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    
+    // 2 Screens - Bordered (Bottom Screen) (12)
+    { { +0.5, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +0.5,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -0.5,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +0.5, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -0.5, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -0.5,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    
+    // 2 Screens - Stretched (Top Screen) (18)
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+  
+    // 2 Screens - Stretched (Bottom Screen) (24)
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    
+    // 4 Screens (Top-Left) (30)
+    { {  0.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { {  0.0, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { {  0.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+
+    // 4 Screens (Top-Right) (36)
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { {  0.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { {  0.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { {  0.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    
+    // 4 Screens (Bottom-Right) (42)
+    { {  0.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { {  0.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { {  0.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    
+    // 4 Screens (Bottom-Left) (48)
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { {  0.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { {  0.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { {  0.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    
+    // Image/Video (54)
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } }
+};
+#else
+const RenderVertex rsdkGLVertexBuffer[24] =
+{
+    // 1 Screen (0)
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+
+    // 2 Screens - Stretched (Top Screen) (6)
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+  
+    // 2 Screens - Stretched (Bottom Screen) (12)
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0,  0.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+  
+    // Image/Video (18)
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { +1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  0.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } },
+    { { +1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  1.0,  1.0 } },
+    { { -1.0, -1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  1.0 } },
+    { { -1.0, +1.0,  1.0 }, 0xFFFFFFFF, {  0.0,  0.0 } }
+};
+#endif
+
+
 void RenderDevice::InitVertexBuffer()
 {
-    RenderVertex vertBuffer[sizeof(rsdkVertexBuffer) / sizeof(RenderVertex)];
-    memcpy(vertBuffer, rsdkVertexBuffer, sizeof(rsdkVertexBuffer));
+    RenderVertex vertBuffer[sizeof(rsdkGLVertexBuffer) / sizeof(RenderVertex)];
+    memcpy(vertBuffer, rsdkGLVertexBuffer, sizeof(rsdkGLVertexBuffer));
 
     float x = 0.5 / (float)viewSize.x;
     float y = 0.5 / (float)viewSize.y;
 
     // ignore the last 6 verts, they're scaled to the 1024x512 textures already!
-    // we do the negation of DX9/DX11 here because there are different texture origins
     int32 vertCount = (RETRO_REV02 ? 60 : 24) - 6;
     for (int32 v = 0; v < vertCount; ++v) {
         RenderVertex *vertex = &vertBuffer[v];
-        vertex->pos.x        = -vertex->pos.x + x;
-        vertex->pos.y        = -vertex->pos.y - y;
+        vertex->pos.x        = vertex->pos.x + x;
+        vertex->pos.y        = vertex->pos.y - y;
 
-        if (!vertex->tex.x)
-            vertex->tex.x = (float)screens[0].size.x / textureSize.x;
-        else
-            vertex->tex.x = 0;
+        if (vertex->tex.x)
+            vertex->tex.x = screens[0].size.x * (1.0 / textureSize.x);
 
-        if (!vertex->tex.y)
-            vertex->tex.y = (float)screens[0].size.y / textureSize.y;
-        else
-            vertex->tex.y = 0;
-    }
-
-    for (int32 v = vertCount; v < vertCount + 6; ++v) {
-        RenderVertex *vertex = &vertBuffer[v];
-        vertex->pos.x        = -vertex->pos.x;
-        vertex->pos.y        = -vertex->pos.y;
-
-        if (!vertex->tex.x)
-            vertex->tex.x = 1;
-        else
-            vertex->tex.x = 0;
-
-        if (!vertex->tex.y)
-            vertex->tex.y = 1;
-        else
-            vertex->tex.y = 0;
+        if (vertex->tex.y)
+            vertex->tex.y = screens[0].size.y * (1.0 / textureSize.y);
     }
 
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(RenderVertex) * (!RETRO_REV02 ? 24 : 60), vertBuffer);
@@ -608,9 +721,17 @@ void RenderDevice::FlipScreen()
 #endif
     }
 
+#if RETRO_PLATFORM != RETRO_ANDROID
     if (!eglSwapBuffers(display, surface)) {
         PrintLog(PRINT_NORMAL, "[EGL] Failed to swap buffers: %d", eglGetError());
     }
+#else
+    if (!SwappyGL_swap(display, surface)) {
+        if (SwappyGL_isEnabled()) {
+            PrintLog(PRINT_NORMAL, "[EGL] Failed to swap buffers: %d", eglGetError());
+        }
+    }
+#endif
 }
 
 void RenderDevice::Release(bool32 isRefresh)
@@ -626,8 +747,11 @@ void RenderDevice::Release(bool32 isRefresh)
         for (int32 i = 0; i < shaderCount; ++i) {
             glDeleteProgram(shaderList[i].programID);
         }
+    
+#if RETRO_PLATFORM == RETRO_SWITCH
         glDeleteVertexArrays(1, &VAO);
         glDeleteBuffers(1, &VBO);
+#endif
 
         eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
         eglDestroyContext(display, context);
@@ -689,26 +813,43 @@ bool RenderDevice::InitShaders()
         maxShaders  = 1;
         shaderCount = 1;
 
+        GLint success;
+        char infoLog[0x1000];
+
         GLuint vert, frag;
-        const GLchar *vchar[] = { _GLVERSION, _GLDEFINE, backupVertex };
+        const GLchar *vchar[] = { _GLVERSION, _GLDEFINE, _glVPrecision, backupVertex };
         vert                  = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vert, 3, vchar, NULL);
+        glShaderSource(vert, 4, vchar, NULL);
         glCompileShader(vert);
 
-        const GLchar *fchar[] = { _GLVERSION, _GLDEFINE, backupFragment };
+        const GLchar *fchar[] = { _GLVERSION, _GLDEFINE, _glFPrecision, backupFragment };
         frag                  = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(frag, 3, fchar, NULL);
+        glShaderSource(frag, 4, fchar, NULL);
         glCompileShader(frag);
+
+        glGetShaderiv(vert, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(vert, 0x1000, NULL, infoLog);
+            PrintLog(PRINT_NORMAL, "BACKUP vertex shader compiling failed:\n%s", infoLog);
+        }        
+
+        glGetShaderiv(frag, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(frag, 0x1000, NULL, infoLog);
+            PrintLog(PRINT_NORMAL, "BACKUP fragment shader compiling failed:\n%s", infoLog);
+        }     
 
         shader->programID = glCreateProgram();
         glAttachShader(shader->programID, vert);
         glAttachShader(shader->programID, frag);
+
+        glBindAttribLocation(shader->programID, 0, "in_pos");
+        //glBindAttribLocation(shader->programID, 1, "in_color");
+        glBindAttribLocation(shader->programID, 1, "in_UV");
+
         glLinkProgram(shader->programID);
         glDeleteShader(vert);
         glDeleteShader(frag);
-        glBindAttribLocation(shader->programID, 0, "in_pos");
-        glBindAttribLocation(shader->programID, 1, "in_color");
-        glBindAttribLocation(shader->programID, 2, "in_UV");
 
         glUseProgram(shader->programID);
 
@@ -736,12 +877,12 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
 
     ShaderEntry *shader = &shaderList[shaderCount];
     shader->linear      = linear;
-    sprintf_s(shader->name, (int32)sizeof(shader->name), "%s", fileName);
+    sprintf_s(shader->name, sizeof(shader->name), "%s", fileName);
 
     GLint success;
     char infoLog[0x1000];
     GLuint vert, frag;
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Shaders/GL3/None.vs");
+    sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Shaders/OGL/None.vs");
     InitFileInfo(&info);
     if (LoadFile(&info, fullFilePath, FMODE_RB)) {
         uint8 *fileData = NULL;
@@ -754,11 +895,18 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
         vert                   = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vert, 4, glchar, NULL);
         glCompileShader(vert);
+
+        glGetShaderiv(vert, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(vert, 0x1000, NULL, infoLog);
+            PrintLog(PRINT_NORMAL, "Vertex shader compiling failed:\n%s", infoLog);
+            return;
+        }     
     }
     else
         return;
 
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Shaders/GL3/%s.fs", fileName);
+    sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Shaders/OGL/%s.fs", fileName);
     InitFileInfo(&info);
     if (LoadFile(&info, fullFilePath, FMODE_RB)) {
         uint8 *fileData = NULL;
@@ -771,6 +919,13 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
         frag                   = glCreateShader(GL_FRAGMENT_SHADER);
         glShaderSource(frag, 4, glchar, NULL);
         glCompileShader(frag);
+
+        glGetShaderiv(frag, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(frag, 0x1000, NULL, infoLog);
+            PrintLog(PRINT_NORMAL, "Fragment shader compiling failed:\n%s", infoLog);
+            return;
+        }     
     }
     else
         return;
@@ -778,6 +933,11 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
     shader->programID = glCreateProgram();
     glAttachShader(shader->programID, vert);
     glAttachShader(shader->programID, frag);
+    
+    glBindAttribLocation(shader->programID, 0, "in_pos");
+    //glBindAttribLocation(shader->programID, 1, "in_color");
+    glBindAttribLocation(shader->programID, 1, "in_UV");
+
     glLinkProgram(shader->programID);
     glGetProgramiv(shader->programID, GL_LINK_STATUS, &success);
     if (!success) {
@@ -787,9 +947,6 @@ void RenderDevice::LoadShader(const char *fileName, bool32 linear)
     }
     glDeleteShader(vert);
     glDeleteShader(frag);
-    glBindAttribLocation(shader->programID, 0, "in_pos");
-    glBindAttribLocation(shader->programID, 1, "in_color");
-    glBindAttribLocation(shader->programID, 2, "in_UV");
     shaderCount++;
 };
 

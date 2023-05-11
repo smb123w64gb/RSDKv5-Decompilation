@@ -64,7 +64,7 @@ bool32 AudioDevice::Init()
   ndspChnSetRate(0, SAMPLE_RATE);
   ndspChnSetFormat(0, TARGET_OUT_FORMAT);
 
-  InitAudioChannels();
+  AudioDeviceBase::InitAudioChannels();
 
   
   // allocate space for audio buffer
@@ -97,7 +97,7 @@ bool32 AudioDevice::Init()
   }
 
   // create event for audio thread 
-  svcCreateEvent(&audioThreadRequest, 0);
+  svcCreateEvent(&audioThreadRequest, RESET_ONESHOT);
   
   // set audio callback (simply triggers audioThreadRequest event)
   ndspSetCallback(AudioCallback, NULL);
@@ -121,125 +121,8 @@ void AudioDevice::Release()
   ndspChnReset(0);
   linearFree(audioBuffer);
   ndspExit();
-}
 
-void AudioDevice::ProcessAudioMixing(void* stream, int32 length)
-{
-  // taken from SDL2 backend
-  SAMPLE_FORMAT *streamF    = (SAMPLE_FORMAT*)stream;
-  SAMPLE_FORMAT *streamEndF = ((SAMPLE_FORMAT*)stream) + length;
-
-  memset(stream, 0, length * sizeof(SAMPLE_FORMAT));
-
-  for (int32 c = 0; c < CHANNEL_COUNT; ++c) {
-      ChannelInfo *channel = &channels[c];
-
-      switch (channel->state) {
-          default:
-          case CHANNEL_IDLE: break;
-
-          case CHANNEL_SFX: {
-              SAMPLE_FORMAT *sfxBuffer = &channel->samplePtr[channel->bufferPos];
-
-              // somehow it can get here and not have any data to play, causing a crash. This should fix that
-              if (!sfxBuffer) {
-                  channel->state   = CHANNEL_IDLE;
-                  channel->soundID = -1;
-                  continue;
-              }
-
-              float volL = channel->volume, volR = channel->volume;
-              if (channel->pan < 0.0)
-                  volL = (1.0 + channel->pan) * channel->volume;
-              else
-                  volR = (1.0 - channel->pan) * channel->volume;
-
-              float panL = volL * engine.soundFXVolume * 0.5;
-              float panR = volR * engine.soundFXVolume * 0.5;
-
-              uint32 speedPercent       = 0;
-              SAMPLE_FORMAT *curStreamF           = streamF;
-              while (curStreamF < streamEndF && streamF < streamEndF) {
-                  SAMPLE_FORMAT sample = (sfxBuffer[1] - *sfxBuffer) * speedMixAmounts[speedPercent >> 6] + *sfxBuffer;
-
-                  speedPercent += channel->speed;
-                  sfxBuffer += FROM_FIXED(speedPercent);
-                  channel->bufferPos += FROM_FIXED(speedPercent);
-                  speedPercent &= 0xFFFF;
-
-#if SAMPLE_USE_S16
-                  curStreamF[0] += (s16) (sample * panR);
-                  curStreamF[1] += (s16) (sample * panL);
-#endif
-                  curStreamF += 2;
-
-                  if (channel->bufferPos >= channel->sampleLength) {
-                      if (channel->loop == 0xFFFFFFFF) {
-                          channel->state   = CHANNEL_IDLE;
-                          channel->soundID = -1;
-                          break;
-                      }
-                      else {
-                          channel->bufferPos -= channel->sampleLength;
-                          channel->bufferPos += channel->loop;
-
-                          sfxBuffer = &channel->samplePtr[channel->bufferPos];
-                      }
-                  }
-              }
-
-              break;
-          }
-
-          case CHANNEL_STREAM: {
-              SAMPLE_FORMAT *streamBuffer = &channel->samplePtr[channel->bufferPos];
-
-              // somehow it can get here and not have any data to play, causing a crash. This should fix that
-              if (!streamBuffer) {
-                  channel->state   = CHANNEL_IDLE;
-                  channel->soundID = -1;
-                  continue;
-              }
-
-              float volL = channel->volume, volR = channel->volume;
-              if (channel->pan < 0.0)
-                  volL = (1.0 + channel->pan) * channel->volume;
-              else
-                  volR = (1.0 - channel->pan) * channel->volume;
-
-              float panL = volL * engine.streamVolume * 0.5;
-              float panR = volR * engine.streamVolume * 0.5;
-
-              uint32 speedPercent       = 0;
-              SAMPLE_FORMAT *curStreamF           = streamF;
-              while (curStreamF < streamEndF && streamF < streamEndF) {
-                  speedPercent += channel->speed;
-                  int32 next = FROM_FIXED(speedPercent);
-                  speedPercent &= 0xFFFF;
-
-#if SAMPLE_USE_S16
-                  curStreamF[0] += (s16) (*streamBuffer * panR);
-                  curStreamF[1] += (s16) (streamBuffer[next] * panL);
-#endif
-                  curStreamF += 2;
-
-                  streamBuffer += next * 2;
-                  channel->bufferPos += next * 2;
-
-                  if (channel->bufferPos >= channel->sampleLength) {
-                      channel->bufferPos -= channel->sampleLength;
-
-                      streamBuffer = &channel->samplePtr[channel->bufferPos];
-
-                      UpdateStreamBuffer(channel);
-                  }
-              }
-              break;
-          }
-
-          case CHANNEL_LOADING_STREAM: break;
-      }
-  }
+  AudioDeviceBase::Release();
 }
 
 void AudioDevice::FrameInit() {
@@ -250,28 +133,6 @@ void AudioDevice::HandleStreamLoad(ChannelInfo* channel, bool32 async)
 {
   // TODO: support async at some point, maybe?
   LoadStream(channel);
-}
-
-void AudioDevice::InitAudioChannels() {
-  // taken from SDL2 backend
-  for (int32 i = 0; i < CHANNEL_COUNT; i++) {
-    channels[i].soundID = -1;
-    channels[i].state = CHANNEL_IDLE;
-  }
-
-  for (int32 i = 0; i < 0x400; i += 2) {
-    speedMixAmounts[i]     = (i + 0) * (1.0f / 1024.0f);
-    speedMixAmounts[i + 1] = (i + 1) * (1.0f / 1024.0f);
-  }
-
-  GEN_HASH_MD5("Stream Channel 0", sfxList[SFX_COUNT - 1].hash);
-  sfxList[SFX_COUNT - 1].scope              = SCOPE_GLOBAL;
-  sfxList[SFX_COUNT - 1].maxConcurrentPlays = 1;
-  sfxList[SFX_COUNT - 1].length             = MIX_BUFFER_SIZE;
-  AllocateStorage((void**)&sfxList[SFX_COUNT - 1].buffer,
-                  MIX_BUFFER_SIZE * sizeof(SAMPLE_FORMAT),
-                  DATASET_MUS,
-                  false);
 }
 
 void AudioThread(void* arg) {
