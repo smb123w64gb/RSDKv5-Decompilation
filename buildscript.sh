@@ -18,4 +18,10 @@ echo "## Building"
 cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/3DS.cmake -DRSDK_PATH="dependencies/v5_3DS" -DGAME_STATIC=ON
 make -j$(nproc)
 
-echo "## Done, build is in $(pwd)/dependencies/RSDKv5/RetroEngine.3dsx"
+echo "## Done building 3DSX, build is in $(pwd)/dependencies/v5_3DS/RetroEngine.3dsx"
+
+echo "## Now building CIA from ELF"
+export ELF_PATH=$(pwd)/dependencies/v5_3DS/RSDKv5U.elf
+cd ../dependencies/v5_3DS/3ds
+./build_cia.sh $ELF_PATH
+echo "## Done! CIA is in $(pwd)/out/"
