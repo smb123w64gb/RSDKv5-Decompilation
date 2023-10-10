@@ -1,5 +1,7 @@
 using namespace RSDK;
 
+#include <thread>
+
 #if !SAMPLE_USE_S16
 #error "ERROR: Incompatible sample format for 3DS builds."
 #endif
@@ -131,8 +133,12 @@ void AudioDevice::FrameInit() {
 
 void AudioDevice::HandleStreamLoad(ChannelInfo* channel, bool32 async)
 {
-  // TODO: support async at some point, maybe?
-  LoadStream(channel);
+  if (async) {
+    std::thread thread(LoadStream, channel);
+    thread.detach();
+  } else {
+    LoadStream(channel);
+  }
 }
 
 void AudioThread(void* arg) {
