@@ -399,7 +399,7 @@ void LinkGameLogic(EngineInfo info);
 // ORIGINAL CLASS
 
 // Windows.h already included by master header
-#if !(RETRO_PLATFORM == RETRO_WIN || RETRO_PLATFORM == RETRO_SWITCH)
+#if !(RETRO_PLATFORM == RETRO_WIN || RETRO_PLATFORM == RETRO_SWITCH || RETRO_PLATFORM == RETRO_PSP)
 #include <dlfcn.h>
 #endif
 
@@ -444,87 +444,37 @@ public:
 #endif
 #endif
 
-    static inline Handle PlatformLoadLibrary(std::string path)
-    {
-        Handle ret;
-#if RETRO_PLATFORM == RETRO_WIN
-        ret = (Handle)LoadLibraryA(path.c_str());
+
+#if RETRO_PLATFORM == RETRO_PSP
+    // do nothing for psp
+    static inline Handle Open(std::string path) { return NULL; }
 #else
-#if RETRO_PLATFORM == RETRO_ANDROID
-        // path should only load local libs
-        if (path.find_last_of('/') != std::string::npos)
-            path = path.substr(path.find_last_of('/') + 1);
-        path = "lib" + path;
-#endif // ! RETRO_PLATFORM == ANDROID
-        ret  = (Handle)dlopen(path.c_str(), RTLD_LOCAL | RTLD_LAZY);
-#if RETRO_PLATFORM != RETRO_SWITCH
-        // try loading the library globally on linux
-        if (!ret) {
-            if (path.find_last_of('/') != std::string::npos)
-                path = path.substr(path.find_last_of('/') + 1);
-            ret = (Handle)dlopen(path.c_str(), RTLD_LOCAL | RTLD_LAZY);
-        }
-#endif // ! RETRO_PLATFORM != SWITCH
-#endif // ! RETRO_PLATFORM == WIN
-        return ret;
+    static inline Handle PlatformLoadLibrary(std::string path)
     }
 
     static inline Handle Open(std::string path)
-    {
-        std::string original_path = path;
-
-        // if it ends with extension
-        if (path.length() >= strlen(extention) && 0 == path.compare(path.length() - strlen(extention), strlen(extention), extention)) {
-            // remove it!
-            path = path.substr(0, path.size() - strlen(extention));
-        }
-
-#if RETRO_ARCHITECTURE
-        path += "_" RETRO_ARCHITECTURE;
-#endif // ! RETRO_ARCHITECTURE
-
-        // put it again!
-        path += extention;
-
-        Handle ret = NULL;
-        if (prefix) {
-            int32 last = (int32)path.find_last_of('/') + 1;
-            if (last == std::string::npos + 1)
-                ret = PlatformLoadLibrary(prefix + path);
-            else
-                ret = PlatformLoadLibrary(path.substr(0, last) + prefix + path.substr(last));
-        }
-        if (!ret)
-            ret = PlatformLoadLibrary(path);
-
-#if RETRO_ARCHITECTURE
-        if (!ret) {
-            if (prefix) {
-                int32 last = original_path.find_last_of('/') + 1;
-                if (last == std::string::npos + 1)
-                    ret = PlatformLoadLibrary(prefix + original_path);
-                else
-                    ret = PlatformLoadLibrary(original_path.substr(0, last) + prefix + original_path.substr(last));
-            }
-            if (!ret)
-                ret = PlatformLoadLibrary(original_path);
-        }
-#endif // ! RETRO_ARCHITECTURE
-        return ret;
     }
+#endif // ! RETRO_PLATFORM == RETRO_PSP
 
     static inline void Close(Handle handle)
     {
+#if RETRO_PLATFORM == RETRO_PSP
+        return;
+#else
         if (handle)
 #if RETRO_PLATFORM == RETRO_WIN
             FreeLibrary(handle);
 #else
             dlclose(handle);
 #endif
+#endif // ! RETRO_PLATFORM == RETRO_PSP
     }
 
     static inline void *GetSymbol(Handle handle, const char *symbol)
     {
+#if RETRO_PLATFORM == RETRO_PSP
+        return NULL;
+#else
         if (!handle)
             return NULL;
 #if RETRO_PLATFORM == RETRO_WIN
@@ -532,15 +482,20 @@ public:
 #else
         return (void *)dlsym(handle, symbol);
 #endif
+#endif // ! RETRO_PLATFORM == RETRO_PSP
     }
 
     static inline char *GetError()
     {
+#if RETRO_PLATFORM == RETRO_PSP
+        return NULL;
+#else
 #if RETRO_PLATFORM == RETRO_WIN
         return (char *)GetLastErrorAsString();
 #else
         return dlerror();
 #endif
+#endif // ! RETRO_PLATFORM == RETRO_PSP
     }
 
 private:

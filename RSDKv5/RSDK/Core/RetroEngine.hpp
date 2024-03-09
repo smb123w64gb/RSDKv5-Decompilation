@@ -91,6 +91,7 @@ enum GameRegions {
 #define RETRO_iOS     (6)
 #define RETRO_ANDROID (7)
 #define RETRO_UWP     (8)
+#define RETRO_PSP     (9)
 
 // ============================
 // PLATFORMS (used mostly in legacy but could come in handy here)
@@ -141,6 +142,9 @@ enum GameRegions {
 #define RETRO_DEVICETYPE (RETRO_STANDARD)
 #elif defined __linux__
 #define RETRO_PLATFORM   (RETRO_LINUX)
+#define RETRO_DEVICETYPE (RETRO_STANDARD)
+#elif defined __psp__
+#define RETRO_PLATFORM   (RETRO_PSP)
 #define RETRO_DEVICETYPE (RETRO_STANDARD)
 #else
 #define RETRO_PLATFORM   (RETRO_WIN)
@@ -524,7 +528,7 @@ extern "C" {
 #endif
 
 #if RETRO_RENDERDEVICE_SDL2 || RETRO_INPUTDEVICE_SDL2 || RETRO_AUDIODEVICE_SDL2
-#if RETRO_PLATFORM == RETRO_OSX
+#if RETRO_PLATFORM == RETRO_OSX || RETRO_PLATFORM == RETRO_PSP
 // yeah, I dunno how you're meant to do the below with macOS frameworks so leaving this as is for rn :P
 #include <SDL2/SDL.h>
 #else
