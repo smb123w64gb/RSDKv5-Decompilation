@@ -29,18 +29,18 @@ DataStorage RSDK::dataStorage[DATASET_MAX];
 bool32 RSDK::InitStorage()
 {
     // Storage limits.
-    dataStorage[DATASET_STG].storageLimit = 24 * 1024 * 1024; // 24MB
-    dataStorage[DATASET_MUS].storageLimit = 8 * 1024 * 1024;  //  8MB
-    dataStorage[DATASET_SFX].storageLimit = 32 * 1024 * 1024; // 32MB
-    dataStorage[DATASET_STR].storageLimit = 2 * 1024 * 1024;  //  2MB
-    dataStorage[DATASET_TMP].storageLimit = 8 * 1024 * 1024;  //  8MB
+    
+    dataStorage[DATASET_STG].storageLimit = 0x932900; // 16.19751 Mib
+    dataStorage[DATASET_MUS].storageLimit = 0x42ff00;  // 4.187256 Mib
+    dataStorage[DATASET_SFX].storageLimit = 14 * 1024 * 1024; // 12 Mib
+    dataStorage[DATASET_STR].storageLimit = 0x16000;  // 0.0859375 Mib
+    dataStorage[DATASET_TMP].storageLimit = 1 * 0x600000;  // 6 Mib
 
     for (int32 s = 0; s < DATASET_MAX; ++s) {
         dataStorage[s].usedStorage = 0;
         dataStorage[s].entryCount  = 0;
         dataStorage[s].clearCount  = 0;
         dataStorage[s].memoryTable = (uint32 *)malloc(dataStorage[s].storageLimit);
-
         if (dataStorage[s].memoryTable == NULL)
             return false;
     }
