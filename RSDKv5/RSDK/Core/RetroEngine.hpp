@@ -152,7 +152,7 @@ enum GameRegions {
 #endif
 
 #ifndef SCREEN_XMAX
-#define SCREEN_XMAX (1280)
+#define SCREEN_XMAX (512)
 #endif
 
 #ifndef SCREEN_YSIZE
@@ -405,7 +405,7 @@ enum GameRegions {
 #error RSDK_USE_OGL must be defined.
 #endif
 
-#elif RETRO_PLATFORM == RETRO_OSX || RETRO_PLATFORM == RETRO_iOS
+#elif RETRO_PLATFORM == RETRO_OSX || RETRO_PLATFORM == RETRO_iOS || RETRO_PLATFORM == RETRO_PSP
 
 #undef RETRO_RENDERDEVICE_SDL2
 #define RETRO_RENDERDEVICE_SDL2 (1)
