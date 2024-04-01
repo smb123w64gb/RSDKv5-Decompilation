@@ -75,7 +75,7 @@ void RSDK::SKU::InitUserCore()
 #endif
 
     if (!userDBStorage)
-        userDBStorage = new UserDBStorage;
+        userDBStorage = new UserDBStorage();
 #endif
 
 #if RETRO_REV02
