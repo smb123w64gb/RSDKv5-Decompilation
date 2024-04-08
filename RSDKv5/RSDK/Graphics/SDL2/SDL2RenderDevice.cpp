@@ -43,6 +43,10 @@ bool RenderDevice::Init()
     videoSettings.windowWidth  = 1920;
     videoSettings.windowHeight = 1080;
     flags |= SDL_WINDOW_FULLSCREEN;
+#elif RETRO_PLATFORM == RETRO_PSP
+    videoSettings.windowed     = false;
+    videoSettings.windowWidth  = 480;
+    videoSettings.windowHeight = 272;
 #endif
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
