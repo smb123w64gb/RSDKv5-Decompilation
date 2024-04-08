@@ -1163,6 +1163,10 @@ void RSDK::SKU::InitUserDirectory()
 
     SKU::SetUserFileCallbacks("./", NULL, NULL);
 
+#elif RETRO_PLATFORM == RETRO_PSP
+
+    SKU::SetUserFileCallbacks("ms0:/SonicMania/", NULL, NULL);
+
 #else
 
     SKU::SetUserFileCallbacks("", NULL, NULL);

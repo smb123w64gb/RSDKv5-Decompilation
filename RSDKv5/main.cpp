@@ -1,5 +1,8 @@
 #include "RSDK/Core/RetroEngine.hpp"
 #include "main.hpp"
+#include <pspmoduleinfo.h>
+#include <pspfpu.h>
+
 
 #if RETRO_STANDALONE
 #define LinkGameLogic RSDK::LinkGameLogic
@@ -75,7 +78,13 @@ void android_main(struct android_app *ap)
     SwappyGL_destroy();
 }
 #else
-int32 main(int32 argc, char *argv[]) { return RSDK_main(argc, argv, (void *)LinkGameLogic); }
+int32 main(int32 argc, char *argv[]) { 
+    #ifdef __PSP__
+    PSP_HEAP_SIZE_KB(-128);
+    pspFpuSetEnable(false);
+    #endif
+    return RSDK_main(argc, argv, (void *)LinkGameLogic); 
+    }
 #endif
 
 int32 RSDK_main(int32 argc, char **argv, void *linkLogicPtr)
