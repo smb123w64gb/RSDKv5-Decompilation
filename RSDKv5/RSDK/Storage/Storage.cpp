@@ -34,7 +34,10 @@ bool32 RSDK::InitStorage()
     dataStorage[DATASET_SFX].storageLimit = 32 * 1024 * 1024; // 32MB
     dataStorage[DATASET_STR].storageLimit = 2 * 1024 * 1024;  //  2MB
     dataStorage[DATASET_TMP].storageLimit = 8 * 1024 * 1024;  //  8MB
-
+    #if !RETRO_AUDIO
+    dataStorage[DATASET_MUS].storageLimit = 0;
+    dataStorage[DATASET_SFX].storageLimit = 0;
+    #endif
     for (int32 s = 0; s < DATASET_MAX; ++s) {
         dataStorage[s].usedStorage = 0;
         dataStorage[s].entryCount  = 0;

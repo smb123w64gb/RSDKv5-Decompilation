@@ -21,9 +21,17 @@ struct VideoManager {
     static ogg_int64_t granulePos;
     static bool32 initializing;
 };
-
+#if RETRO_VIDEO_CUTSCENE
 bool32 LoadVideo(const char *filename, double startDelay, bool32 (*skipCallback)());
 void ProcessVideo();
+#else
+inline bool32 LoadVideo(const char *filename, double startDelay, bool32 (*skipCallback)()){
+    return false;
+};
+inline void ProcessVideo(){
+    return;
+}
+#endif
 
 } // namespace RSDK
 

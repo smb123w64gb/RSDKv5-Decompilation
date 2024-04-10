@@ -11,6 +11,17 @@ option(RETRO_MOD_LOADER "Enables or disables the mod loader." ON)
 set(RETRO_MOD_LOADER_VER 2 CACHE STRING "Sets the mod loader version. Defaults to latest")
 
 option(RETRO_AUDIO "Enables or disables the Audio." ON)
+option(RETRO_VIDEO_CUTSCENE "Enables or disables the Video Cutscenes." ON)
+
+set(SCREEN_XMAX 1280 CACHE STRING "Screen Width to compile for. Default is = 1280")
+
+if(RETRO_REVISION STREQUAL "1")
+set(SCREEN_COUNT 2 CACHE STRING "Screen count to compile for. Default is = 2")
+else()
+set(SCREEN_COUNT 4 CACHE STRING "Screen count to compile for. Default is = 4")
+endif()
+
+
 
 set(RETRO_NAME "RSDKv5")
 
@@ -157,6 +168,10 @@ target_compile_definitions(RetroEngine PRIVATE
     RETRO_USE_MOD_LOADER=$<BOOL:${RETRO_MOD_LOADER}>
     RETRO_MOD_LOADER_VER=${RETRO_MOD_LOADER_VER}
     RETRO_AUDIO=$<BOOL:${RETRO_AUDIO}>
+    RETRO_VIDEO_CUTSCENE=$<BOOL:${RETRO_VIDEO_CUTSCENE}>
+
+    SCREEN_XMAX=${SCREEN_XMAX}
+    SCREEN_COUNT=${SCREEN_COUNT}
 
     RETRO_STANDALONE=$<NOT:$<BOOL:${GAME_STATIC}>>
     
@@ -179,6 +194,9 @@ if(WITH_RSDK)
 
         RETRO_USE_MOD_LOADER=$<BOOL:${RETRO_MOD_LOADER}>
         RETRO_MOD_LOADER_VER=${RETRO_MOD_LOADER_VER}
+
+        SCREEN_XMAX=${SCREEN_XMAX}
+        SCREEN_COUNT=${SCREEN_COUNT}
     
         GAME_INCLUDE_EDITOR=$<BOOL:${GAME_INCLUDE_EDITOR}>
 
