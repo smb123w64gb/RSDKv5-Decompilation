@@ -43,9 +43,9 @@ set(SHARED_DEFINES
 target_compile_definitions(RetroEngine PRIVATE ${SHARED_DEFINES})
 target_compile_definitions(${GAME_NAME} PRIVATE ${SHARED_DEFINES})
 
-target_compile_options(RetroEngine PRIVATE -O2 -lcitro2d -lcitro3d)
+target_compile_options(RetroEngine PRIVATE -O2)
 target_compile_definitions(RetroEngine PRIVATE RETRO_DISABLE_LOG=1)
-target_link_libraries(RetroEngine ctru m)
+target_link_libraries(RetroEngine citro2d citro3d ctru m)
 
 set(PLATFORM 3DS)
 ctr_create_3dsx(RetroEngine)

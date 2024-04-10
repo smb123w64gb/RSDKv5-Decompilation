@@ -561,6 +561,8 @@ extern "C" {
 #elif RETRO_PLATFORM == RETRO_3DS
 #define PrintConsole _PrintConsole
 #include <3ds.h>
+#include <citro2d.h>
+#include <tex3ds.h>
 #undef PrintConsole
 
 #endif
@@ -627,7 +629,14 @@ namespace RSDK
 {
 
 struct RetroEngine {
-    RetroEngine() {}
+    RetroEngine() {
+        gfxInitDefault();
+        C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
+        C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
+        C2D_Prepare();
+        topScreen = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
+        clearColor = C2D_Color32f(0.5f, 0.5f, 0.0f, 1.0f);
+    }
 
 #if RETRO_STANDALONE
     bool32 useExternalCode = true;
@@ -682,6 +691,13 @@ struct RetroEngine {
     bool32 streamsEnabled = true;
     float streamVolume    = 1.0f;
     float soundFXVolume   = 1.0f;
+    #if RETRO_PLATFORM == RETRO_3DS
+    // due to the 3DS's limited resolution, image scaling isn't needed here
+    C3D_RenderTarget* topScreen;
+    //C3D_RenderTarget* rightScreen;
+    //C3D_FrameBuf* videoBuffer;
+    u32 clearColor;
+    #endif
 };
 
 extern RetroEngine engine;

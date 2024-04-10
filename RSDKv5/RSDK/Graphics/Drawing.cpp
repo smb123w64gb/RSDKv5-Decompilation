@@ -596,7 +596,11 @@ void RSDK::FillScreen(uint32 color, int32 alphaR, int32 alphaG, int32 alphaB)
         uint16 clrBlendR = blendLookupTable[0x20 * alphaR + rgb32To16_B[(color >> 0x10) & 0xFF]];
         uint16 clrBlendG = blendLookupTable[0x20 * alphaG + rgb32To16_B[(color >> 0x08) & 0xFF]];
         uint16 clrBlendB = blendLookupTable[0x20 * alphaB + rgb32To16_B[(color >> 0x00) & 0xFF]];
-
+    #if RETRO_PLATFORM == RETRO_3DS
+        C2D_DrawRectSolid(0,0,0,400,240,color);
+        engine.clearColor = color;
+    }
+    #else
         uint16 *fbBlendR = &blendLookupTable[0x20 * (0xFF - alphaR)];
         uint16 *fbBlendG = &blendLookupTable[0x20 * (0xFF - alphaG)];
         uint16 *fbBlendB = &blendLookupTable[0x20 * (0xFF - alphaB)];
@@ -612,10 +616,14 @@ void RSDK::FillScreen(uint32 color, int32 alphaR, int32 alphaG, int32 alphaB)
             currentScreen->frameBuffer[id] = (B) | (G << 6) | (R << 11);
         }
     }
+    #endif
 }
 
 void RSDK::DrawLine(int32 x1, int32 y1, int32 x2, int32 y2, uint32 color, int32 alpha, int32 inkEffect, bool32 screenRelative)
 {
+    #if RETRO_PLATFORM == RETRO_3DS
+    C2D_DrawLine(x1,y1,color,x2,y2,color,1.0f,1.0f);
+    #else
     switch (inkEffect) {
         default: break;
 
@@ -1142,9 +1150,39 @@ void RSDK::DrawLine(int32 x1, int32 y1, int32 x2, int32 y2, uint32 color, int32 
             }
             break;
     }
+    #endif
 }
 void RSDK::DrawRectangle(int32 x, int32 y, int32 width, int32 height, uint32 color, int32 alpha, int32 inkEffect, bool32 screenRelative)
 {
+    #if RETRO_PLATFORM == RETRO_3DS
+    if (!screenRelative) {
+        x      = FROM_FIXED(x) - currentScreen->position.x;
+        y      = FROM_FIXED(y) - currentScreen->position.y;
+        width  = FROM_FIXED(width);
+        height = FROM_FIXED(height);
+    }
+
+    if (width + x > currentScreen->clipBound_X2)
+        width = currentScreen->clipBound_X2 - x;
+
+    if (x < currentScreen->clipBound_X1) {
+        width += x - currentScreen->clipBound_X1;
+        x = currentScreen->clipBound_X1;
+    }
+
+    if (height + y > currentScreen->clipBound_Y2)
+        height = currentScreen->clipBound_Y2 - y;
+
+    if (y < currentScreen->clipBound_Y1) {
+        height += y - currentScreen->clipBound_Y1;
+        y = currentScreen->clipBound_Y1;
+    }
+
+    if (width <= 0 || height <= 0)
+        return;
+    C2D_DrawRectSolid(x,y,1,width,height,color<<8|alpha);
+    printf("X:%i Y:%i Width:%i Height:%i Relative?:%i\nRGB:%i Alpha:%i\n",x,y,width,height,screenRelative,color<<8|alpha,alpha);
+    #else
     switch (inkEffect) {
         default: break;
         case INK_ALPHA:
@@ -1312,9 +1350,13 @@ void RSDK::DrawRectangle(int32 x, int32 y, int32 width, int32 height, uint32 col
             break;
         }
     }
+    #endif
 }
 void RSDK::DrawCircle(int32 x, int32 y, int32 radius, uint32 color, int32 alpha, int32 inkEffect, bool32 screenRelative)
 {
+    #if RETRO_PLATFORM == RETRO_3DS
+    C2D_DrawCircleSolid(x,y,1.0f,radius,color);
+    #else
     if (radius > 0) {
         switch (inkEffect) {
             default: break;
@@ -1645,6 +1687,7 @@ void RSDK::DrawCircle(int32 x, int32 y, int32 radius, uint32 color, int32 alpha,
             }
         }
     }
+    #endif
 }
 void RSDK::DrawCircleOutline(int32 x, int32 y, int32 innerRadius, int32 outerRadius, uint32 color, int32 alpha, int32 inkEffect,
                              bool32 screenRelative)

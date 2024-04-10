@@ -109,11 +109,12 @@ int32 RSDK::RunRetroEngine(int32 argc, char *argv[])
 
 #if RETRO_PLATFORM == RETRO_3DS
     while (aptMainLoop() && RenderDevice::isRunning) {
+        C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 #else
     while (RenderDevice::isRunning) {
 #endif
         RenderDevice::ProcessEvents();
-
+        C2D_DrawEllipse(0, 0, 0, 400, 240, C2D_Color32(0xFF, 0x00, 0xFF, 0xFF), C2D_Color32(0xFF, 0xFF, 0x00, 0xFF), C2D_Color32(0x00, 0xFF, 0xFF, 0xFF), C2D_Color32(0xFF, 0xFF, 0xFF, 0xFF));
         if (!RenderDevice::isRunning)
             break;
 
@@ -322,6 +323,7 @@ int32 RSDK::RunRetroEngine(int32 argc, char *argv[])
                 RenderDevice::ProcessDimming();
 
             RenderDevice::FlipScreen();
+            C3D_FrameEnd(0);
         }
     }
 

@@ -5,6 +5,12 @@
 
 using namespace RSDK;
 
+u32 clearColor = 0;
+u32 clrWhite = C2D_Color32(0xFF, 0xFF, 0xFF, 0xFF);
+u32 clrCircle1 = C2D_Color32(0xFF, 0x00, 0xFF, 0xFF);
+u32 clrCircle2 = C2D_Color32(0xFF, 0xFF, 0x00, 0xFF);
+u32 clrCircle3 = C2D_Color32(0x00, 0xFF, 0xFF, 0xFF);
+
 static float msPerFrame = 1000.0f / SCREEN_REFRESH;
 
 u64 curFrame;
@@ -13,18 +19,13 @@ float msElapsed;
 
 bool RenderDevice::Init()
 {
-  gfxInitDefault();
-
   if (printToConsole) {
     consoleInit(GFX_BOTTOM, NULL);
-
     // dummy out later maybe possibly
     printf("RSDKv5 3DS: RenderDevice init\n");
     printf("The programmer has a nap. Hold out!\nProgrammer!\n");
   }
 
-  gfxSetScreenFormat(GFX_TOP, GSP_RGB565_OES);
-  gfxSetDoubleBuffering(GFX_TOP, true);
 
   scanlines = (ScanlineInfo*) malloc(SCREEN_YSIZE_3DS * sizeof(ScanlineInfo));
   if (!scanlines)
@@ -42,48 +43,19 @@ bool RenderDevice::Init()
   InitInputDevices();
   if (!AudioDevice::Init())
     return false;
-
+  
   return true;
 }
 
 void RenderDevice::CopyFrameBuffer()
 {
-  return;
 }
 
 // https://github.com/JeffRuLz/Sonic-1-2-2013-Decompilation/blob/main/RSDKv4/3ds/3ds.cpp#L141
 void RenderDevice::FlipScreen()
 {
-  u16 *src = screens[0].frameBuffer;
-  u16 *dst = (uint16*) gfxGetFramebuffer(GFX_TOP, GFX_LEFT, 0, 0);
-
-  if (!CheckForFrameSkip()) {
-    switch (videoSettings.screenCount) {
-      default:
-      case 0:
-        // image/video buffer, break
-        break;
-      case 1:
-        for (int y = 0; y < SCREEN_YSIZE_3DS; y++) {
-          for (int x = 0; x < SCREEN_XSIZE_3DS; x++) {
-            dst[((x * 240) + (240 - y - 1))] = *src++;
-          }
-        }
-        break;
-
-      // the separate screens used for competition mode will likely 
-      // never be supported by the 3DS port
-      case 2:
-      case 3:
-      case 4:
-        break;
-    }
-
-    gfxFlushBuffers();
-    gfxSwapBuffers();
-    gspWaitForVBlank();
-  }
 }
+
 
 void RenderDevice::Release(bool32 isRefresh)
 {
@@ -91,13 +63,15 @@ void RenderDevice::Release(bool32 isRefresh)
     free(scanlines);
 
   if (!isRefresh) {
+    C2D_Fini();
+	  C3D_Fini();
     gfxExit();
   }
 }
 
 void RenderDevice::RefreshWindow()
 {
-
+return;
 }
 
 void RenderDevice::SetupImageTexture(int32 width, int32 height, uint8* imagePixels)
@@ -125,6 +99,20 @@ void RenderDevice::SetupVideoTexture_YUV424(int32 width, int32 height, uint8* im
 
 bool RenderDevice::ProcessEvents()
 {
+  
+  C2D_TargetClear(engine.topScreen,engine.clearColor);
+  C2D_SceneBegin(engine.topScreen);
+  
+  
+
+  if (controller->keySelect.press){
+  if (engine.devMenu) {
+    if (sceneInfo.state == ENGINESTATE_DEVMENU)
+        CloseDevMenu();
+    else
+        OpenDevMenu();
+                    }
+                    }
   return true;
 }
 
