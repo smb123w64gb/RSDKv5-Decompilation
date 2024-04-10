@@ -26,6 +26,15 @@ enum {
 
 DataStorage RSDK::dataStorage[DATASET_MAX];
 
+const char* dataStorageNames[] = {"DATASET_STG"
+    ,"DATASET_MUS"
+    ,"DATASET_SFX"
+    ,"DATASET_STR"
+    ,"DATASET_TMP",
+    "DATASET_MAX"};
+
+uint dataStorageMax[] = {0,0,0,0,0};
+
 bool32 RSDK::InitStorage()
 {
     // Storage limits.
@@ -89,6 +98,10 @@ void RSDK::AllocateStorage(void **dataPtr, uint32 size, StorageDataSets dataSet,
 
         if (dataStorage[dataSet].entryCount < STORAGE_ENTRY_COUNT) {
             DataStorage *storage = &dataStorage[dataSet];
+            if(dataStorageMax[dataSet]<(storage->usedStorage + size)){
+                printf("%s : %i\n",dataStorageNames[dataSet],(storage->usedStorage + size));
+                dataStorageMax[dataSet]=(storage->usedStorage + size);
+            }
 
 #if !RETRO_USE_ORIGINAL_CODE
             // Bug: The original release never takes into account the size of the header when checking if there's enough storage left.
