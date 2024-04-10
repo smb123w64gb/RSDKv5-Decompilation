@@ -1,3 +1,4 @@
+#if RETRO_AUDIO
 #include "RSDK/Core/RetroEngine.hpp"
 
 using namespace RSDK;
@@ -596,4 +597,5 @@ void RSDK::ClearGlobalSfx()
 
     UnlockAudioDevice();
 }
+#endif
 #endif

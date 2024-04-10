@@ -545,7 +545,6 @@ extern "C" {
 #include "RSDK/Storage/Text.hpp"
 #include "RSDK/Core/Reader.hpp"
 #include "RSDK/Graphics/Animation.hpp"
-#include "RSDK/Audio/Audio.hpp"
 #include "RSDK/Input/Input.hpp"
 #include "RSDK/Scene/Object.hpp"
 #include "RSDK/Graphics/Palette.hpp"
@@ -563,6 +562,11 @@ extern "C" {
 #include "RSDK/User/Core/UserPresence.hpp"
 #include "RSDK/User/Core/UserStorage.hpp"
 #include "RSDK/Core/Link.hpp"
+#if RETRO_AUDIO
+#include "RSDK/Audio/Audio.hpp"
+#else
+#include "RSDK/Audio/AudioNull.hpp"
+#endif
 #if RETRO_USE_MOD_LOADER
 #include "RSDK/Core/ModAPI.hpp"
 #endif
@@ -601,7 +605,7 @@ struct RetroEngine {
 
     uint8 focusState = 0;
     uint8 inFocus    = 0;
-#if !RETRO_USE_ORIGINAL_CODE
+#if !RETRO_USE_ORIGINAL_CODE & RETRO_AUDIO
     uint8 focusPausedChannel[CHANNEL_COUNT];
 #endif
 
