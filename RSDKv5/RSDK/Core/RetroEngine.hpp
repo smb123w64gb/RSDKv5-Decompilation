@@ -533,8 +533,9 @@ extern "C" {
 #include "SDL.h"
 #endif
 #endif
-
+#if RETRO_VIDEO_CUTSCENE
 #include <theora/theoradec.h>
+#endif
 
 // ============================
 // ENGINE INCLUDES

@@ -98,10 +98,10 @@ void RSDK::AllocateStorage(void **dataPtr, uint32 size, StorageDataSets dataSet,
 
         if (dataStorage[dataSet].entryCount < STORAGE_ENTRY_COUNT) {
             DataStorage *storage = &dataStorage[dataSet];
-            if(dataStorageMax[dataSet]<storage->usedStorage * sizeof(uint32) + size + (HEADER_SIZE * sizeof(uint32))){
+            /*if(dataStorageMax[dataSet]<storage->usedStorage * sizeof(uint32) + size + (HEADER_SIZE * sizeof(uint32))){
                 printf("%s : %i\n",dataStorageNames[dataSet],storage->usedStorage * sizeof(uint32) + size + (HEADER_SIZE * sizeof(uint32)));
                 dataStorageMax[dataSet]=storage->usedStorage * sizeof(uint32) + size + (HEADER_SIZE * sizeof(uint32));
-            }
+            }*/
 
 #if !RETRO_USE_ORIGINAL_CODE
             // Bug: The original release never takes into account the size of the header when checking if there's enough storage left.
