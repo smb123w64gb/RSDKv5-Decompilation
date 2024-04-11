@@ -38,11 +38,11 @@ uint dataStorageMax[] = {0,0,0,0,0};
 bool32 RSDK::InitStorage()
 {
     // Storage limits.
-    dataStorage[DATASET_STG].storageLimit = 24 * 1024 * 1024; // 24MB
+    dataStorage[DATASET_STG].storageLimit = 17222530; // 16.424684525 MB
     dataStorage[DATASET_MUS].storageLimit = 8 * 1024 * 1024;  //  8MB
     dataStorage[DATASET_SFX].storageLimit = 32 * 1024 * 1024; // 32MB
-    dataStorage[DATASET_STR].storageLimit = 2 * 1024 * 1024;  //  2MB
-    dataStorage[DATASET_TMP].storageLimit = 8 * 1024 * 1024;  //  8MB
+    dataStorage[DATASET_STR].storageLimit = 112848;  //  0.107620239 MB
+    dataStorage[DATASET_TMP].storageLimit = 7836744;  //  7.473701477 MB
     #if !RETRO_AUDIO
     dataStorage[DATASET_MUS].storageLimit = 0;
     dataStorage[DATASET_SFX].storageLimit = 0;
@@ -98,9 +98,9 @@ void RSDK::AllocateStorage(void **dataPtr, uint32 size, StorageDataSets dataSet,
 
         if (dataStorage[dataSet].entryCount < STORAGE_ENTRY_COUNT) {
             DataStorage *storage = &dataStorage[dataSet];
-            if(dataStorageMax[dataSet]<(storage->usedStorage + size)){
-                printf("%s : %i\n",dataStorageNames[dataSet],(storage->usedStorage + size));
-                dataStorageMax[dataSet]=(storage->usedStorage + size);
+            if(dataStorageMax[dataSet]<storage->usedStorage * sizeof(uint32) + size + (HEADER_SIZE * sizeof(uint32))){
+                printf("%s : %i\n",dataStorageNames[dataSet],storage->usedStorage * sizeof(uint32) + size + (HEADER_SIZE * sizeof(uint32)));
+                dataStorageMax[dataSet]=storage->usedStorage * sizeof(uint32) + size + (HEADER_SIZE * sizeof(uint32));
             }
 
 #if !RETRO_USE_ORIGINAL_CODE
