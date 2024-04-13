@@ -14,6 +14,7 @@ option(RETRO_AUDIO "Enables or disables the Audio." ON)
 option(RETRO_VIDEO_CUTSCENE "Enables or disables the Video Cutscenes." ON)
 
 set(SCREEN_XMAX 1280 CACHE STRING "Screen Width to compile for. Default is = 1280")
+set(SCREEN_YSIZE 240 CACHE STRING "Screen Height to compile for. Default is = 240")
 
 if(RETRO_REVISION STREQUAL "1")
 set(SCREEN_COUNT 2 CACHE STRING "Screen count to compile for. Default is = 2")
@@ -171,6 +172,7 @@ target_compile_definitions(RetroEngine PRIVATE
     RETRO_VIDEO_CUTSCENE=$<BOOL:${RETRO_VIDEO_CUTSCENE}>
 
     SCREEN_XMAX=${SCREEN_XMAX}
+    SCREEN_YSIZE=${SCREEN_YSIZE}
     SCREEN_COUNT=${SCREEN_COUNT}
 
     RETRO_STANDALONE=$<NOT:$<BOOL:${GAME_STATIC}>>
@@ -196,6 +198,7 @@ if(WITH_RSDK)
         RETRO_MOD_LOADER_VER=${RETRO_MOD_LOADER_VER}
 
         SCREEN_XMAX=${SCREEN_XMAX}
+        SCREEN_YSIZE=${SCREEN_YSIZE}
         SCREEN_COUNT=${SCREEN_COUNT}
     
         GAME_INCLUDE_EDITOR=$<BOOL:${GAME_INCLUDE_EDITOR}>
