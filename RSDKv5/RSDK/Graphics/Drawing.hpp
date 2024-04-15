@@ -254,6 +254,8 @@ private:
 #include "Vulkan/VulkanRenderDevice.hpp"
 #elif RETRO_RENDERDEVICE_EGL
 #include "EGL/EGLRenderDevice.hpp"
+#elif RETRO_RENDERDEVICE_GU
+#include "GU/GURenderDevice.hpp"
 #endif
 
 extern DrawList drawGroups[DRAWGROUP_COUNT];

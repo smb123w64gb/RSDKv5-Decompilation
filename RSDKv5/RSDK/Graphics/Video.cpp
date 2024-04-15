@@ -234,6 +234,7 @@ void RSDK::ProcessVideo()
             th_decode_ycbcr_out(VideoManager::td, yuv);
 
             int32 dataPos = (VideoManager::ti.pic_x & 0xFFFFFFFE) + (VideoManager::ti.pic_y & 0xFFFFFFFE) * yuv[0].stride;
+            /*
             switch (VideoManager::pixelFormat) {
                 default: break;
 
@@ -256,7 +257,7 @@ void RSDK::ProcessVideo()
                         &yuv[2].data[yuv[1].stride * (VideoManager::ti.pic_y >> 1) + (VideoManager::ti.pic_x >> 1)], yuv[0].stride, yuv[1].stride,
                         yuv[2].stride);
                     break;
-            }
+            }*/
         }
 
         VideoManager::initializing = false;
