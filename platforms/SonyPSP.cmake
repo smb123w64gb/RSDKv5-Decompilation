@@ -43,11 +43,11 @@ else()
 endif()
 
 
-target_compile_options(RetroEngine PRIVATE -O2)
-target_compile_definitions(RetroEngine PRIVATE RETRO_DISABLE_LOG=1)
-target_link_libraries(RetroEngine m)
+target_compile_options(RetroEngine PRIVATE -Os)
+target_compile_options(${GAME_NAME} PRIVATE -Os)
+
+target_link_libraries(RetroEngine pspdebug pspfpu m)
 
 set(PLATFORM PSP)
 create_pbp_file(TARGET RetroEngine
 	TITLE "${CMAKE_PROJECT_NAME}")
-
