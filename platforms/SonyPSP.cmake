@@ -46,6 +46,12 @@ endif()
 target_compile_options(RetroEngine PRIVATE -Os)
 target_compile_options(${GAME_NAME} PRIVATE -Os)
 
+set(SHARED_DEFINES
+    SCREEN_XMAX=512 SCREEN_COUNT=1
+)
+target_compile_definitions(RetroEngine PRIVATE ${SHARED_DEFINES})
+target_compile_definitions(${GAME_NAME} PRIVATE ${SHARED_DEFINES})
+
 target_link_libraries(RetroEngine pspdebug pspfpu m)
 
 set(PLATFORM PSP)

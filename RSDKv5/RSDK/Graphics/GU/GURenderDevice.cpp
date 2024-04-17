@@ -1,5 +1,5 @@
 
-#define MANIA_WIDTH (512)//424
+#define MANIA_WIDTH (424)//424
 #define MANIA_HEIGHT (240)//240
 
 #include <pspkernel.h>
@@ -7,6 +7,7 @@
 #include <pspdisplay.h>
 using namespace RSDK;
 
+#define MANIA_PITCH (MANIA_WIDTH + 15) & 0xFFFFFFF0
 #define PSP_SCREEN_WIDTH 480
 #define PSP_SCREEN_HEIGHT 272
 #define PSP_LINE_SIZE 512
@@ -56,6 +57,7 @@ static void Ge_Finish_Callback(int id, void *arg)
 
 bool RenderDevice::Init()
 {//This is just gpSP display code atm...
+printf("Mania Pitch is %i",MANIA_PITCH);
   sceDisplaySetMode(0, PSP_SCREEN_WIDTH, PSP_SCREEN_HEIGHT);
   sceDisplayWaitVblankStart();
   sceDisplaySetFrameBuf((void*)psp_gu_vram_base, PSP_LINE_SIZE,
@@ -111,7 +113,7 @@ bool RenderDevice::Init()
   GE_CMD(FBW, (((u32)psp_gu_vram_base & 0xFF000000) >> 8) | PSP_LINE_SIZE);
   // Set texture 0 to the screen texture
   GE_CMD(TBP0, ((u32)screen_texture & 0x00FFFFFF));
-  GE_CMD(TBW0, (((u32)screen_texture & 0xFF000000) >> 8) | MANIA_WIDTH);
+  GE_CMD(TBW0, (((u32)screen_texture & 0xFF000000) >> 8) | MANIA_PITCH);
   // Set the texture size to 256 by 256 (2^8 by 2^8)
   GE_CMD(TSIZE0, (8 << 8) | 9);
   // Flush the texture cache
@@ -153,7 +155,7 @@ bool RenderDevice::Init()
 
   RSDK::SetScreenSize(0, MANIA_WIDTH,MANIA_HEIGHT );
 
-  memset(screens[0].frameBuffer, 0, MANIA_HEIGHT * MANIA_WIDTH * sizeof(uint16));
+  memset(screens[0].frameBuffer, 0, MANIA_HEIGHT * MANIA_PITCH * sizeof(uint16));
 
   InitInputDevices();
   if (!AudioDevice::Init())
@@ -169,7 +171,7 @@ void clear_screen(u16 color)
 
   sceGuSync(0, 0);
 
-  for(i = 0; i < (512 * 272); i++, src_ptr++)
+  for(i = 0; i < (MANIA_PITCH * MANIA_HEIGHT); i++, src_ptr++)
   {
     *src_ptr = color;
   }
@@ -183,7 +185,7 @@ void RenderDevice::CopyFrameBuffer()
 
 void RGBtoBGR()
 {
-        int32 cnt = MANIA_WIDTH * MANIA_HEIGHT;
+        int32 cnt = (MANIA_WIDTH+16) * MANIA_HEIGHT;
         for (int32 id = 0; cnt > 0; --cnt, ++id) {
             uint16 px = screens[0].frameBuffer[id];
             screens[0].frameBuffer[id] = ((px & 0x1F)<< 11) | (px & 0x7E0) | ((px & 0xF800) >> 11);
@@ -193,7 +195,7 @@ void RGBtoBGR()
 // https://github.com/JeffRuLz/Sonic-1-2-2013-Decompilation/blob/main/RSDKv4/3ds/3ds.cpp#L141
 void RenderDevice::FlipScreen()
 {
-    RGBtoBGR();
+    //RGBtoBGR();
     u16 *src = screens[0].frameBuffer;
   
     u32 *old_ge_cmd_ptr = ge_cmd_ptr;
@@ -203,7 +205,7 @@ void RenderDevice::FlipScreen()
     ge_cmd_ptr = ge_cmd + 2;
     GE_CMD(TBP0, ((u32)screen_pixels & 0x00FFFFFF));
     GE_CMD(TBW0, (((u32)screen_pixels & 0xFF000000) >> 8) |
-     MANIA_WIDTH);
+     MANIA_PITCH);
     ge_cmd_ptr = old_ge_cmd_ptr;
 
     sceGeListEnQueue(ge_cmd, ge_cmd_ptr, gecbid, NULL);
