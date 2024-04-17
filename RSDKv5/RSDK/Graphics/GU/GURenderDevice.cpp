@@ -1,5 +1,5 @@
 
-#define MANIA_WIDTH (424)//424
+#define MANIA_WIDTH (512)//424
 #define MANIA_HEIGHT (240)//240
 
 #include <pspkernel.h>
@@ -113,7 +113,7 @@ bool RenderDevice::Init()
   GE_CMD(TBP0, ((u32)screen_texture & 0x00FFFFFF));
   GE_CMD(TBW0, (((u32)screen_texture & 0xFF000000) >> 8) | MANIA_WIDTH);
   // Set the texture size to 256 by 256 (2^8 by 2^8)
-  GE_CMD(TSIZE0, (9 << 8) | 8);
+  GE_CMD(TSIZE0, (8 << 8) | 9);
   // Flush the texture cache
   GE_CMD(TFLUSH, 0);
   // Use 2D coordinates, no indeces, no weights, 32bit float positions,
@@ -181,9 +181,19 @@ void RenderDevice::CopyFrameBuffer()
   return;
 }
 
+void RGBtoBGR()
+{
+        int32 cnt = MANIA_WIDTH * MANIA_HEIGHT;
+        for (int32 id = 0; cnt > 0; --cnt, ++id) {
+            uint16 px = screens[0].frameBuffer[id];
+            screens[0].frameBuffer[id] = ((px & 0x1F)<< 11) | (px & 0x7E0) | ((px & 0xF800) >> 11);
+        }
+}
+
 // https://github.com/JeffRuLz/Sonic-1-2-2013-Decompilation/blob/main/RSDKv4/3ds/3ds.cpp#L141
 void RenderDevice::FlipScreen()
 {
+    RGBtoBGR();
     u16 *src = screens[0].frameBuffer;
   
     u32 *old_ge_cmd_ptr = ge_cmd_ptr;
