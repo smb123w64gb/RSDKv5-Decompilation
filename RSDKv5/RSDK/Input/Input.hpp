@@ -504,6 +504,10 @@ extern int32 gamePadCount;
 #include "Paddleboat/PDBInputDevice.hpp"
 #endif
 
+#if RETRO_INPUTDEVICE_PSP
+#include "PSP/PSPInputDevice.hpp"
+#endif
+
 // Initializes the input devices & the backend APIs powering em
 void InitInputDevices();
 // clears the input states, used by ProcessInput()
