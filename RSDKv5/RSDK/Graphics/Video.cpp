@@ -1,3 +1,4 @@
+#if RETRO_VIDEO_CUTSCENE
 #include "RSDK/Core/RetroEngine.hpp"
 
 using namespace RSDK;
@@ -285,3 +286,4 @@ void RSDK::ProcessVideo()
 #endif
     }
 }
+#endif

@@ -135,7 +135,7 @@ int32 RSDK::RunRetroEngine(int32 argc, char *argv[])
                 if (!(engine.focusState & 1)) {
                     engine.focusState = 1;
 
-#if !RETRO_USE_ORIGINAL_CODE
+#if !RETRO_USE_ORIGINAL_CODE & RETRO_AUDIO
                     for (int32 c = 0; c < CHANNEL_COUNT; ++c) {
                         engine.focusPausedChannel[c] = false;
                         if (!(channels[c].state & CHANNEL_PAUSED)) {
@@ -151,7 +151,7 @@ int32 RSDK::RunRetroEngine(int32 argc, char *argv[])
             else if (engine.focusState) {
                 engine.focusState = 0;
 
-#if !RETRO_USE_ORIGINAL_CODE
+#if !RETRO_USE_ORIGINAL_CODE & RETRO_AUDIO
                 for (int32 c = 0; c < CHANNEL_COUNT; ++c) {
                     if (engine.focusPausedChannel[c])
                         ResumeChannel(c);

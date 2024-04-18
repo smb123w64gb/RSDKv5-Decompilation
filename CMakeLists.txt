@@ -10,6 +10,9 @@ option(RETRO_DISABLE_PLUS "Disable plus. Should be set on for any public release
 option(RETRO_MOD_LOADER "Enables or disables the mod loader." ON)
 set(RETRO_MOD_LOADER_VER 2 CACHE STRING "Sets the mod loader version. Defaults to latest")
 
+option(RETRO_AUDIO "Enables or disables the Audio." ON)
+option(RETRO_VIDEO_CUTSCENE "Enables or disables the Video Cutscenes." ON)
+
 set(RETRO_NAME "RSDKv5")
 
 if(RETRO_REVISION STREQUAL "3")
@@ -156,6 +159,9 @@ target_compile_definitions(RetroEngine PRIVATE
     
     RETRO_USE_MOD_LOADER=$<BOOL:${RETRO_MOD_LOADER}>
     RETRO_MOD_LOADER_VER=${RETRO_MOD_LOADER_VER}
+
+    RETRO_AUDIO=$<BOOL:${RETRO_AUDIO}>
+    RETRO_VIDEO_CUTSCENE=$<BOOL:${RETRO_VIDEO_CUTSCENE}>
 
     RETRO_STANDALONE=$<NOT:$<BOOL:${GAME_STATIC}>>
     

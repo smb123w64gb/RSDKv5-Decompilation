@@ -3,7 +3,7 @@
 
 namespace RSDK
 {
-
+#if RETRO_VIDEO_CUTSCENE
 struct VideoManager {
     static FileInfo file;
 
@@ -24,7 +24,14 @@ struct VideoManager {
 
 bool32 LoadVideo(const char *filename, double startDelay, bool32 (*skipCallback)());
 void ProcessVideo();
-
+#else
+inline bool32 LoadVideo(const char *filename, double startDelay, bool32 (*skipCallback)()){
+    return false;
+};
+inline void ProcessVideo(){
+    return;
+}
+#endif
 } // namespace RSDK
 
 #endif // VIDEO_H
