@@ -1,8 +1,13 @@
 #include "RSDK/Core/RetroEngine.hpp"
 #include "main.hpp"
-#include <pspmoduleinfo.h>
-#include <pspfpu.h>
+#include <pspkernel.h>
+#include <pspdebug.h>
 
+#if __psp__
+    PSP_MODULE_INFO("Sonic_Mania", 0, 1, 1);
+
+    PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
+#endif
 
 #if RETRO_STANDALONE
 #define LinkGameLogic RSDK::LinkGameLogic
@@ -81,7 +86,7 @@ void android_main(struct android_app *ap)
 int32 main(int32 argc, char *argv[]) { 
     #ifdef __PSP__
     PSP_HEAP_SIZE_KB(-128);
-    pspFpuSetEnable(false);
+
     #endif
     return RSDK_main(argc, argv, (void *)LinkGameLogic); 
     }

@@ -428,7 +428,7 @@ enum GameRegions {
 #define RETRO_RENDERDEVICE_GU (1)
 
 #undef RETRO_AUDIODEVICE_SDL2
-#define RETRO_AUDIODEVICE_SDL2 (1)
+//#define RETRO_AUDIODEVICE_SDL2 (1)
 
 #undef RETRO_INPUTDEVICE_PSP
 #define RETRO_INPUTDEVICE_PSP (1)
@@ -556,8 +556,9 @@ extern "C" {
 #endif
 #endif
 
+#if RETRO_VIDEO_CUTSCENE
 #include <theora/theoradec.h>
-
+#endif
 // ============================
 // ENGINE INCLUDES
 // ============================
