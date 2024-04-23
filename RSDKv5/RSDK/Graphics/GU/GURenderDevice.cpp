@@ -196,20 +196,15 @@ void RGBtoBGR()
 void RenderDevice::FlipScreen()
 {
     //RGBtoBGR();
-    u16 *src = screens[0].frameBuffer;
-  
     u32 *old_ge_cmd_ptr = ge_cmd_ptr;
     sceKernelDcacheWritebackAll();
-
     // Render the current screen
     ge_cmd_ptr = ge_cmd + 2;
     GE_CMD(TBP0, ((u32)screen_pixels & 0x00FFFFFF));
     GE_CMD(TBW0, (((u32)screen_pixels & 0xFF000000) >> 8) |
      MANIA_PITCH);
     ge_cmd_ptr = old_ge_cmd_ptr;
-
     sceGeListEnQueue(ge_cmd, ge_cmd_ptr, gecbid, NULL);
-    u16 *dst = screen_pixels;
 
   switch (videoSettings.screenCount) {
     default:
@@ -217,7 +212,10 @@ void RenderDevice::FlipScreen()
       // image/video buffer, break
       break;
     case 1:
-      screen_pixels = screens[0].frameBuffer;
+    memcpy(screen_pixels,screens[0].frameBuffer,MANIA_HEIGHT * (MANIA_WIDTH+16) * sizeof(uint16));
+      //screen_pixels = screens[0].frameBuffer;
+      
+      
       /*for (int y = 0; y < MANIA_WIDTH; y++) {
           for (int x = 0; x < MANIA_HEIGHT; x++) {
             dst[((x * 512) + (512 - y - 1))] = *src++;
@@ -233,8 +231,9 @@ void RenderDevice::FlipScreen()
     case 4:
       break;
   }
-
-
+  //sceDisplayWaitVblankStart();
+    //sceGuFinish();
+    //sceGuSync(0, 0);
   /*
   if (windowRefreshDelay > 0) {
     windowRefreshDelay--;
@@ -295,10 +294,6 @@ void RenderDevice::InitFPSCap()
 
 bool RenderDevice::CheckFPSCap()
 {
-    sceGuFinish();
-    sceGuSync(0, 0);
-    sceDisplayWaitVblankStart();
-    sceGuSwapBuffers();
     return true;
 }
 
