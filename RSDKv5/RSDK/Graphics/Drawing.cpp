@@ -273,9 +273,9 @@ void RSDK::GenerateBlendLookupTable()
 #endif
 
     for (int32 c = 0; c < 0x100; ++c) {
-        rgb32To16_R[c] = (c & 0xFFF8) << 8;
+        rgb32To16_B[c] = (c & 0xFFF8) << 8;
         rgb32To16_G[c] = (c & 0xFFFC) << 3;
-        rgb32To16_B[c] = c >> 3;
+        rgb32To16_R[c] = c >> 3;
     }
 }
 
@@ -593,13 +593,13 @@ void RSDK::FillScreen(uint32 color, int32 alphaR, int32 alphaG, int32 alphaB)
 
     if (alphaR + alphaG + alphaB) {
         validDraw        = true;
-        uint16 clrBlendR = blendLookupTable[0x20 * alphaR + rgb32To16_B[(color >> 0x10) & 0xFF]];
-        uint16 clrBlendG = blendLookupTable[0x20 * alphaG + rgb32To16_B[(color >> 0x08) & 0xFF]];
-        uint16 clrBlendB = blendLookupTable[0x20 * alphaB + rgb32To16_B[(color >> 0x00) & 0xFF]];
+        uint16 clrBlendB = blendLookupTable[0x20 * alphaR + rgb32To16_R[(color >> 0x10) & 0xFF]];
+        uint16 clrBlendG = blendLookupTable[0x20 * alphaG + rgb32To16_R[(color >> 0x08) & 0xFF]];
+        uint16 clrBlendR = blendLookupTable[0x20 * alphaB + rgb32To16_R[(color >> 0x00) & 0xFF]];
 
-        uint16 *fbBlendR = &blendLookupTable[0x20 * (0xFF - alphaR)];
+        uint16 *fbBlendB = &blendLookupTable[0x20 * (0xFF - alphaR)];
         uint16 *fbBlendG = &blendLookupTable[0x20 * (0xFF - alphaG)];
-        uint16 *fbBlendB = &blendLookupTable[0x20 * (0xFF - alphaB)];
+        uint16 *fbBlendR = &blendLookupTable[0x20 * (0xFF - alphaB)];
 
         int32 cnt = currentScreen->size.y * currentScreen->pitch;
         for (int32 id = 0; cnt > 0; --cnt, ++id) {
@@ -616,6 +616,7 @@ void RSDK::FillScreen(uint32 color, int32 alphaR, int32 alphaG, int32 alphaB)
 
 void RSDK::DrawLine(int32 x1, int32 y1, int32 x2, int32 y2, uint32 color, int32 alpha, int32 inkEffect, bool32 screenRelative)
 {
+    color = ((color&0xFF)<<16)|(color&0xFF00)|((color&0xFF0000)>>16);
     switch (inkEffect) {
         default: break;
 
@@ -788,7 +789,7 @@ void RSDK::DrawLine(int32 x1, int32 y1, int32 x2, int32 y2, uint32 color, int32 
         drawY2 = v;
     }
 
-    uint16 color16      = rgb32To16_B[(color >> 0) & 0xFF] | rgb32To16_G[(color >> 8) & 0xFF] | rgb32To16_R[(color >> 16) & 0xFF];
+    uint16 color16      = rgb32To16_R[(color >> 0) & 0xFF] | rgb32To16_G[(color >> 8) & 0xFF] | rgb32To16_B[(color >> 16) & 0xFF];
     uint16 *frameBuffer = &currentScreen->frameBuffer[drawX1 + drawY1 * currentScreen->pitch];
 
     switch (inkEffect) {
@@ -1145,6 +1146,7 @@ void RSDK::DrawLine(int32 x1, int32 y1, int32 x2, int32 y2, uint32 color, int32 
 }
 void RSDK::DrawRectangle(int32 x, int32 y, int32 width, int32 height, uint32 color, int32 alpha, int32 inkEffect, bool32 screenRelative)
 {
+    color = ((color&0xFF)<<16)|(color&0xFF00)|((color&0xFF0000)>>16);
     switch (inkEffect) {
         default: break;
         case INK_ALPHA:
@@ -1197,7 +1199,7 @@ void RSDK::DrawRectangle(int32 x, int32 y, int32 width, int32 height, uint32 col
     int32 pitch         = currentScreen->pitch - width;
     validDraw           = true;
     uint16 *frameBuffer = &currentScreen->frameBuffer[x + (y * currentScreen->pitch)];
-    uint16 color16      = rgb32To16_B[(color >> 0) & 0xFF] | rgb32To16_G[(color >> 8) & 0xFF] | rgb32To16_R[(color >> 16) & 0xFF];
+    uint16 color16      = rgb32To16_R[(color >> 0) & 0xFF] | rgb32To16_G[(color >> 8) & 0xFF] | rgb32To16_B[(color >> 16) & 0xFF];
 
     switch (inkEffect) {
         case INK_NONE: {
@@ -1315,6 +1317,7 @@ void RSDK::DrawRectangle(int32 x, int32 y, int32 width, int32 height, uint32 col
 }
 void RSDK::DrawCircle(int32 x, int32 y, int32 radius, uint32 color, int32 alpha, int32 inkEffect, bool32 screenRelative)
 {
+    color = ((color&0xFF)<<16)|(color&0xFF00)|((color&0xFF0000)>>16);
     if (radius > 0) {
         switch (inkEffect) {
             default: break;
@@ -1421,7 +1424,7 @@ void RSDK::DrawCircle(int32 x, int32 y, int32 radius, uint32 color, int32 alpha,
 
             // validDraw              = true;
             uint16 *frameBuffer = &currentScreen->frameBuffer[top * currentScreen->pitch];
-            uint16 color16      = rgb32To16_B[(color >> 0) & 0xFF] | rgb32To16_G[(color >> 8) & 0xFF] | rgb32To16_R[(color >> 16) & 0xFF];
+            uint16 color16      = rgb32To16_R[(color >> 0) & 0xFF] | rgb32To16_G[(color >> 8) & 0xFF] | rgb32To16_B[(color >> 16) & 0xFF];
 
             switch (inkEffect) {
                 default: break;
@@ -1649,6 +1652,7 @@ void RSDK::DrawCircle(int32 x, int32 y, int32 radius, uint32 color, int32 alpha,
 void RSDK::DrawCircleOutline(int32 x, int32 y, int32 innerRadius, int32 outerRadius, uint32 color, int32 alpha, int32 inkEffect,
                              bool32 screenRelative)
 {
+    color = ((color&0xFF)<<16)|(color&0xFF00)|((color&0xFF0000)>>16);
     switch (inkEffect) {
         default: break;
         case INK_ALPHA:
@@ -1708,7 +1712,7 @@ void RSDK::DrawCircleOutline(int32 x, int32 y, int32 innerRadius, int32 outerRad
             int32 or2           = outerRadius * outerRadius;
             validDraw           = true;
             uint16 *frameBuffer = &currentScreen->frameBuffer[left + top * currentScreen->pitch];
-            uint16 color16      = rgb32To16_B[(color >> 0) & 0xFF] | rgb32To16_G[(color >> 8) & 0xFF] | rgb32To16_R[(color >> 16) & 0xFF];
+            uint16 color16      = rgb32To16_R[(color >> 0) & 0xFF] | rgb32To16_G[(color >> 8) & 0xFF] | rgb32To16_B[(color >> 16) & 0xFF];
             int32 pitch         = (left + currentScreen->pitch - right);
 
             switch (inkEffect) {
@@ -1927,7 +1931,7 @@ void RSDK::DrawCircleOutline(int32 x, int32 y, int32 innerRadius, int32 outerRad
     }
 }
 
-void RSDK::DrawFace(Vector2 *vertices, int32 vertCount, int32 r, int32 g, int32 b, int32 alpha, int32 inkEffect)
+void RSDK::DrawFace(Vector2 *vertices, int32 vertCount, int32 b, int32 g, int32 r, int32 alpha, int32 inkEffect)
 {
     switch (inkEffect) {
         default: break;
@@ -4393,7 +4397,8 @@ void RSDK::DrawString(Animator *animator, Vector2 *position, String *string, int
 }
 void RSDK::DrawDevString(const char *string, int32 x, int32 y, int32 align, uint32 color)
 {
-    uint16 color16 = rgb32To16_B[(color >> 0) & 0xFF] | rgb32To16_G[(color >> 8) & 0xFF] | rgb32To16_R[(color >> 16) & 0xFF];
+    color = ((color&0xFF)<<16)|(color&0xFF00)|((color&0xFF0000)>>16);
+    uint16 color16 = rgb32To16_R[(color >> 0) & 0xFF] | rgb32To16_G[(color >> 8) & 0xFF] | rgb32To16_B[(color >> 16) & 0xFF];
 
     int32 charOffset   = 0;
     bool32 linesRemain = true;
