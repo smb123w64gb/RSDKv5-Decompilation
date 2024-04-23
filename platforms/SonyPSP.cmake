@@ -58,4 +58,6 @@ target_link_libraries(RetroEngine pspdebug pspfpu m)
 
 set(PLATFORM PSP)
 create_pbp_file(TARGET RetroEngine
-	TITLE "${CMAKE_PROJECT_NAME}")
+	TITLE "${CMAKE_PROJECT_NAME}"
+    ICON_PATH ../../../${RSDK_PATH}/psp/ICON0.png
+    BACKGROUND_PATH ../../../${RSDK_PATH}/psp/PIC1.png)
