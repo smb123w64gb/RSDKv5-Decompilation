@@ -1,6 +1,5 @@
 using namespace RSDK;
 #include <pspctrl.h>
-SceCtrlLatch latchData;
 
 InputState mappings[12];
 
@@ -19,12 +18,15 @@ static int32 remap[12] = {
   PSP_CTRL_SELECT
 };
 
+int32 last_buttons = 0;
+
 void RSDK::SKU::InputDevicePSP::UpdateInput()
 {
-  sceCtrlReadLatch(&latchData);
-
-  int32 kDown = latchData.uiMake;
-  int32 kHeld = latchData.uiPress;
+  SceCtrlData ctrl_data;
+  sceCtrlPeekBufferPositive(&ctrl_data, 1);
+  
+  int32 kDown = ctrl_data.Buttons;
+  int32 kHeld = ctrl_data.Buttons & last_buttons;
 
   if (kDown || kHeld)
     this->anyPress = 1;
@@ -33,6 +35,7 @@ void RSDK::SKU::InputDevicePSP::UpdateInput()
     mappings[i].down = kDown & remap[i];
     mappings[i].press = kHeld & remap[i];
   }
+  last_buttons = ctrl_data.Buttons;
 }
 
 // TODO: the code below *technically* works, but is kind of a mess.
@@ -72,9 +75,11 @@ RSDK::SKU::InputDevicePSP *RSDK::SKU::InitPSPDevice(uint32 id) {
     delete inputDeviceList[inputDeviceCount];
 
   inputDeviceList[inputDeviceCount] = new InputDevicePSP();
+  sceCtrlSetSamplingCycle(0);
+  sceCtrlSetSamplingMode(PSP_CTRL_MODE_ANALOG);
 
   InputDevicePSP *device = (InputDevicePSP*) inputDeviceList[inputDeviceCount];
-  device->gamepadType = (DEVICE_API_NONE << 16) | (DEVICE_TYPE_CONTROLLER << 8) | (DEVICE_SWITCH_HANDHELD << 0);
+  device->gamepadType = (DEVICE_API_NONE << 16) | (DEVICE_TYPE_CONTROLLER << 8) | (DEVICE_PS4 << 0);
   device->disabled = false;
   device->id = id;
   device->active = true;
