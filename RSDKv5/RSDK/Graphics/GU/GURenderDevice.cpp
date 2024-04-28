@@ -154,7 +154,7 @@ printf("Mania Pitch is %i",MANIA_PITCH);
   videoSettings.dimPercent = 1.0;
 
   RSDK::SetScreenSize(0, MANIA_WIDTH,MANIA_HEIGHT );
-
+  screens[0].frameBuffer = screen_pixels;
   memset(screens[0].frameBuffer, 0, MANIA_HEIGHT * MANIA_PITCH * sizeof(uint16));
 
   InitInputDevices();
@@ -212,7 +212,7 @@ void RenderDevice::FlipScreen()
       // image/video buffer, break
       break;
     case 1:
-    memcpy(screen_pixels,screens[0].frameBuffer,MANIA_HEIGHT * (MANIA_WIDTH+16) * sizeof(uint16));
+    //memcpy(screen_pixels,screens[0].frameBuffer,MANIA_HEIGHT * (MANIA_WIDTH+16) * sizeof(uint16));
       //screen_pixels = screens[0].frameBuffer;
       
       

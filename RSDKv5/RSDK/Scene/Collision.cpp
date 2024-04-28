@@ -988,8 +988,8 @@ void RSDK::ProcessObjectMovement(Entity *entity, Hitbox *outerBox, Hitbox *inner
 #endif
 
             if (entity->onGround) {
-                entity->velocity.x = entity->groundVel * cos256LookupTable[entity->angle & 0xFF] >> 8;
-                entity->velocity.y = entity->groundVel * sin256LookupTable[entity->angle & 0xFF] >> 8;
+                entity->velocity.x = entity->groundVel * Cos256(entity->angle & 0xFF) >> 8;
+                entity->velocity.y = entity->groundVel * Sin256(entity->angle & 0xFF) >> 8;
             }
             else {
                 entity->groundVel = entity->velocity.x;
@@ -1613,13 +1613,13 @@ void RSDK::ProcessPathGrip()
     absSpeed &= 0x3FFFF;
     while (checkDist > -1) {
         if (checkDist >= 1) {
-            xVel = cos256LookupTable[collisionEntity->angle] << 10;
-            yVel = sin256LookupTable[collisionEntity->angle] << 10;
+            xVel = Cos256(collisionEntity->angle) << 10;
+            yVel = Sin256(collisionEntity->angle) << 10;
             checkDist--;
         }
         else {
-            xVel      = absSpeed * cos256LookupTable[collisionEntity->angle] >> 8;
-            yVel      = absSpeed * sin256LookupTable[collisionEntity->angle] >> 8;
+            xVel      = absSpeed * Cos256(collisionEntity->angle) >> 8;
+            yVel      = absSpeed * Sin256(collisionEntity->angle) >> 8;
             checkDist = -1;
         }
 
@@ -1930,8 +1930,8 @@ void RSDK::ProcessPathGrip()
             else {
                 collisionEntity->onGround      = false;
                 collisionEntity->collisionMode = newCollisionMode;
-                collisionEntity->velocity.x    = cos256LookupTable[collisionEntity->angle] * collisionEntity->groundVel >> 8;
-                collisionEntity->velocity.y    = sin256LookupTable[collisionEntity->angle] * collisionEntity->groundVel >> 8;
+                collisionEntity->velocity.x    = Cos256(collisionEntity->angle) * collisionEntity->groundVel >> 8;
+                collisionEntity->velocity.y    = Sin256(collisionEntity->angle) * collisionEntity->groundVel >> 8;
                 if (collisionEntity->velocity.y < -TO_FIXED(16))
                     collisionEntity->velocity.y = -TO_FIXED(16);
 
@@ -1965,8 +1965,8 @@ void RSDK::ProcessPathGrip()
             else {
                 collisionEntity->onGround      = false;
                 collisionEntity->collisionMode = newCollisionMode;
-                collisionEntity->velocity.x    = cos256LookupTable[collisionEntity->angle] * collisionEntity->groundVel >> 8;
-                collisionEntity->velocity.y    = sin256LookupTable[collisionEntity->angle] * collisionEntity->groundVel >> 8;
+                collisionEntity->velocity.x    = Cos256(collisionEntity->angle) * collisionEntity->groundVel >> 8;
+                collisionEntity->velocity.y    = Sin256(collisionEntity->angle) * collisionEntity->groundVel >> 8;
 
                 if (collisionEntity->velocity.y < -TO_FIXED(16))
                     collisionEntity->velocity.y = -TO_FIXED(16);
@@ -2015,8 +2015,8 @@ void RSDK::ProcessPathGrip()
             else {
                 collisionEntity->onGround      = false;
                 collisionEntity->collisionMode = newCollisionMode;
-                collisionEntity->velocity.x    = cos256LookupTable[collisionEntity->angle] * collisionEntity->groundVel >> 8;
-                collisionEntity->velocity.y    = sin256LookupTable[collisionEntity->angle] * collisionEntity->groundVel >> 8;
+                collisionEntity->velocity.x    = Cos256(collisionEntity->angle) * collisionEntity->groundVel >> 8;
+                collisionEntity->velocity.y    = Sin256(collisionEntity->angle) * collisionEntity->groundVel >> 8;
 
                 if (collisionEntity->velocity.y < -TO_FIXED(16))
                     collisionEntity->velocity.y = -TO_FIXED(16);
@@ -2051,8 +2051,8 @@ void RSDK::ProcessPathGrip()
             else {
                 collisionEntity->onGround      = false;
                 collisionEntity->collisionMode = newCollisionMode;
-                collisionEntity->velocity.x    = cos256LookupTable[collisionEntity->angle] * collisionEntity->groundVel >> 8;
-                collisionEntity->velocity.y    = sin256LookupTable[collisionEntity->angle] * collisionEntity->groundVel >> 8;
+                collisionEntity->velocity.x    = Cos256(collisionEntity->angle) * collisionEntity->groundVel >> 8;
+                collisionEntity->velocity.y    = Sin256(collisionEntity->angle) * collisionEntity->groundVel >> 8;
 
                 if (collisionEntity->velocity.y < -TO_FIXED(16))
                     collisionEntity->velocity.y = -TO_FIXED(16);

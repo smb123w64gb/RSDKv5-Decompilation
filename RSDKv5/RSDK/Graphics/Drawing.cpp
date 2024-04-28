@@ -3548,8 +3548,8 @@ void RSDK::DrawSpriteRotozoom(int32 x, int32 y, int32 pivotX, int32 pivotY, int3
     if (!(rotation & 0x1FF))
         angle = rotation & 0x1FF;
 
-    int32 sine        = sin512LookupTable[angle];
-    int32 cosine      = cos512LookupTable[angle];
+    int32 sine        = Sin512(angle);
+    int32 cosine      = Cos512(angle);
     int32 fullScaleXS = scaleX * sine >> 9;
     int32 fullScaleXC = scaleX * cosine >> 9;
     int32 fullScaleYS = scaleY * sine >> 9;
